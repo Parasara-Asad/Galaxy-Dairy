@@ -50,7 +50,8 @@ function MilkEntryView({
   prefillRecord, 
   onClearPrefill, 
   triggerToast, 
-  showLoading 
+  showLoading,
+  openScanModal
 }) {
   const [receiptNo, setReceiptNo] = useState('');
   const [entryDate, setEntryDate] = useState('');
@@ -201,11 +202,24 @@ function MilkEntryView({
 
   return (
     <div className="milk-entry-mobile-view">
-      <div className="mb-3 text-dark">
-        <h4 className="fw-bold mb-1">
-          {editingRecord ? 'Edit Collection Entry' : 'Milk Collection Entry'}
-        </h4>
-        <p className="text-muted small">Record and verify farmer milk deposits.</p>
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <div className="text-dark">
+          <h4 className="fw-bold mb-1">
+            {editingRecord ? 'Edit Collection Entry' : 'Milk Collection Entry'}
+          </h4>
+          <p className="text-muted small mb-0">Record and verify farmer milk deposits.</p>
+        </div>
+        {!editingRecord && (
+          <button
+            type="button"
+            className="btn btn-outline-primary btn-sm rounded-pill px-3 d-flex align-items-center gap-1"
+            onClick={openScanModal}
+            style={{ minHeight: '36px' }}
+          >
+            <i className="bi bi-camera-fill"></i>
+            <span>Scan Receipt</span>
+          </button>
+        )}
       </div>
 
       <form onSubmit={handleSubmit} id="milkEntryForm">

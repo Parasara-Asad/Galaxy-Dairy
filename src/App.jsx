@@ -553,10 +553,12 @@ function App() {
   };
 
   const parseReceiptText = (text) => {
-    // We only extract these 3 values from the receipt:
-    let litreQty = "Not detected";
-    let fatPercentage = "Not detected";
-    let fatRate = "Not detected";
+    let litreQty = "";
+    let fatPercentage = "";
+    let snfValue = "";
+    let ratePerLitre = "";
+    let totalAmount = "";
+    let fatRate = "";
 
     // 1. Extract Milk Quantity (liters)
     const litreRegexes = [
@@ -585,7 +587,7 @@ function App() {
       }
     }
     // Fallback line search for fat
-    if (fatPercentage === "Not detected") {
+    if (!fatPercentage) {
       const lines = text.split("\n");
       for (const line of lines) {
         if (/fat/i.test(line)) {
@@ -598,7 +600,84 @@ function App() {
       }
     }
 
-    // 3. Extract Fat Rate
+    // 3. Extract SNF (%)
+    const snfRegexes = [
+      /(?:snf|s\.n\.f|solid\s*not\s*fat)\s*[:\-]?\s*(\d+(?:\.\d+)?)/i,
+      /(\d+(?:\.\d+)?)\s*(?:%|percent)?\s*(?:snf)\b/i,
+    ];
+    for (const r of snfRegexes) {
+      const match = text.match(r);
+      if (match) {
+        snfValue = parseFloat(match[1]).toFixed(1);
+        break;
+      }
+    }
+    // Fallback line search for SNF
+    if (!snfValue) {
+      const lines = text.split("\n");
+      for (const line of lines) {
+        if (/snf/i.test(line) || /s\.n\.f/i.test(line)) {
+          const numMatch = line.match(/(\d+(?:\.\d+)?)/);
+          if (numMatch) {
+            snfValue = parseFloat(numMatch[1]).toFixed(1);
+            break;
+          }
+        }
+      }
+    }
+
+    // 4. Extract Rate Per Litre
+    const rateRegexes = [
+      /(?:rate|price|price\/ltr|rate\/ltr|r\/l)\s*[:\-]?\s*(?:rs\.?|rupees|₹)?\s*(\d+(?:\.\d+)?)/i,
+      /(?:rs\.?|rupees|₹)?\s*(\d+(?:\.\d+)?)\s*(?:\/\s*ltr|\/\s*l|per\s*ltr|per\s*l)\b/i,
+    ];
+    for (const r of rateRegexes) {
+      const match = text.match(r);
+      if (match) {
+        ratePerLitre = parseFloat(match[1]).toFixed(2);
+        break;
+      }
+    }
+    // Fallback line search for rate
+    if (!ratePerLitre) {
+      const lines = text.split("\n");
+      for (const line of lines) {
+        if (/rate/i.test(line) || /price/i.test(line)) {
+          const numMatch = line.match(/(?:rs\.?|rupees|₹)?\s*(\d+(?:\.\d+)?)/i);
+          if (numMatch) {
+            ratePerLitre = parseFloat(numMatch[1]).toFixed(2);
+            break;
+          }
+        }
+      }
+    }
+
+    // 5. Extract Total Amount
+    const amountRegexes = [
+      /(?:total\s*amount|total\s*amt|amount|amt|net\s*amount|net\s*amt|total|pay|payment|payable)\s*[:\-]?\s*(?:rs\.?|rupees|₹)?\s*(\d+(?:\.\d+)?)/i,
+    ];
+    for (const r of amountRegexes) {
+      const match = text.match(r);
+      if (match) {
+        totalAmount = parseFloat(match[1]).toFixed(2);
+        break;
+      }
+    }
+    // Fallback line search for total amount
+    if (!totalAmount) {
+      const lines = text.split("\n");
+      for (const line of lines) {
+        if (/amount/i.test(line) || /amt/i.test(line) || /total/i.test(line)) {
+          const numMatch = line.match(/(?:rs\.?|rupees|₹)?\s*(\d+(?:\.\d+)?)/i);
+          if (numMatch) {
+            totalAmount = parseFloat(numMatch[1]).toFixed(2);
+            break;
+          }
+        }
+      }
+    }
+
+    // 6. Extract Fat Rate (if any)
     const fatRateRegexes = [
       /(?:fat\s*rate|f\.?\s*rate|f\-rate|rate\s*\/?\s*fat|r\s*\/?\s*fat|fat\s*r|price\s*\/?\s*fat|rate\s*per\s*fat|fat\s*price|fatrate)\s*[:\-]?\s*(?:rs\.?|rupees|₹)?\s*(\d+(?:\.\d+)?)/i,
     ];
@@ -609,56 +688,104 @@ function App() {
         break;
       }
     }
-    // Fallback line search for fat rate
-    if (fatRate === "Not detected") {
-      const lines = text.split("\n");
-      for (const line of lines) {
-        if (/fat/i.test(line) && /(?:rate|price|val|amt)/i.test(line)) {
-          const numMatch = line.match(/(?:rs\.?|rupees|₹)?\s*(\d+(?:\.\d+)?)/i);
-          if (numMatch) {
-            fatRate = parseFloat(numMatch[1]).toFixed(2);
-            break;
-          }
+
+    // Determine what was explicitly detected from OCR
+    const isLitreQtyDetected = litreQty !== "";
+    const isFatPercentageDetected = fatPercentage !== "";
+    const isSnfDetected = snfValue !== "";
+    const isRateDetected = ratePerLitre !== "";
+    const isAmountDetected = totalAmount !== "";
+    const isFatRateDetected = fatRate !== "";
+
+    // 7. Try to parse Date & Time from receipt text
+    let date = "";
+    let isDateDetected = false;
+    const dateMatch = text.match(/(?:date|dt|collected\s*on)?\s*[:\-]?\s*(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/i) 
+      || text.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+    
+    if (dateMatch) {
+      let day, month, year;
+      if (dateMatch[3] && (dateMatch[3].length === 4 || dateMatch[3].length === 2)) {
+        day = parseInt(dateMatch[1]);
+        month = parseInt(dateMatch[2]);
+        year = parseInt(dateMatch[3]);
+        if (year < 100) year += 2000;
+      } else if (dateMatch[1]) {
+        year = parseInt(dateMatch[1]);
+        month = parseInt(dateMatch[2]);
+        day = parseInt(dateMatch[3]);
+      }
+      
+      const timeMatch = text.match(/(?:time)?\s*[:\-]?\s*(\d{1,2}):(\d{2})(?::\d{2})?\s*(am|pm)?/i);
+      let hours = 12;
+      let minutes = 0;
+      if (timeMatch) {
+        hours = parseInt(timeMatch[1]);
+        minutes = parseInt(timeMatch[2]);
+        const ampm = timeMatch[3];
+        if (ampm) {
+          if (ampm.toLowerCase() === "pm" && hours < 12) hours += 12;
+          if (ampm.toLowerCase() === "am" && hours === 12) hours = 0;
         }
+      }
+      
+      try {
+        const dObj = new Date(year, month - 1, day, hours, minutes);
+        if (!isNaN(dObj.getTime())) {
+          dObj.setMinutes(dObj.getMinutes() - dObj.getTimezoneOffset());
+          date = dObj.toISOString().slice(0, 16);
+          isDateDetected = true;
+        }
+      } catch (e) {
+        console.warn("Failed to parse matched date/time", e);
       }
     }
 
-    // Determine if each field was found/detected
-    const isLitreQtyDetected = litreQty !== "Not detected";
-    const isFatPercentageDetected = fatPercentage !== "Not detected";
-    const isFatRateDetected = fatRate !== "Not detected";
+    if (!date) {
+      const now = new Date();
+      now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+      date = now.toISOString().slice(0, 16);
+    }
 
-    // Set fallback app defaults for non-scanned, required fields so user doesn't get blocked
-    const timestamp = Date.now().toString().slice(-4);
-    const count = (records.length + 1).toString().padStart(3, "0");
-    const receiptNo = `RC-${timestamp}${count}`;
+    // 8. Try to parse Farmer Name
+    let farmerName = "";
+    let isFarmerNameDetected = false;
+    const farmerNameRegex = /(?:farmer|name|member|customer|client|m\.?\s*name)\s*[:\-]?\s*([a-z0-9\s]+)/i;
+    const farmerMatch = text.match(farmerNameRegex);
+    if (farmerMatch) {
+      farmerName = farmerMatch[1].trim();
+      isFarmerNameDetected = true;
+    } else {
+      farmerName = "Parasara Zahid";
+    }
 
-    const now = new Date();
-    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-    const date = now.toISOString().slice(0, 16);
+    // 9. Try to parse Receipt No
+    let receiptNo = "";
+    let isReceiptNoDetected = false;
+    const receiptNoRegex = /(?:receipt\s*(?:no|num|#)?|rcpt\s*(?:no|num|#)?|rc\s*(?:no|num|#)?|bill\s*(?:no|num|#)?|id)\s*[:\-]?\s*([a-z0-9\-]+)/i;
+    const receiptMatch = text.match(receiptNoRegex);
+    if (receiptMatch) {
+      receiptNo = receiptMatch[1].trim();
+      isReceiptNoDetected = true;
+    } else {
+      const timestamp = Date.now().toString().slice(-4);
+      const count = (records.length + 1).toString().padStart(3, "0");
+      receiptNo = `RC-${timestamp}${count}`;
+    }
 
-    const farmerName = "Parasara Zahid";
-    const milkShift = "Morning";
-    const milkType = "Cow";
-
-    // Calculate derived fields if dependencies are available
-    let snfValue = "Not detected";
-    if (isFatPercentageDetected) {
+    // 10. Fallback calculations if not explicitly detected
+    if (!snfValue && isFatPercentageDetected) {
       snfValue = (parseFloat(fatPercentage) * 0.4 + 7.0).toFixed(1);
     }
-
-    let ratePerLitre = "Not detected";
-    if (isFatPercentageDetected && isFatRateDetected) {
-      ratePerLitre = (parseFloat(fatPercentage) * parseFloat(fatRate)).toFixed(
-        2,
-      );
+    if (!ratePerLitre && isFatPercentageDetected) {
+      if (isFatRateDetected) {
+        ratePerLitre = (parseFloat(fatPercentage) * parseFloat(fatRate)).toFixed(2);
+      } else {
+        ratePerLitre = calculateRate(fatPercentage).toFixed(2);
+      }
     }
-
-    let totalAmount = "Not detected";
-    if (isLitreQtyDetected && ratePerLitre !== "Not detected") {
-      totalAmount = (parseFloat(litreQty) * parseFloat(ratePerLitre)).toFixed(
-        2,
-      );
+    if (!totalAmount && isLitreQtyDetected && ratePerLitre) {
+      totalAmount = (parseFloat(litreQty) * parseFloat(ratePerLitre)).toFixed(2);
     }
 
     return {
@@ -666,8 +793,8 @@ function App() {
         receiptNo,
         date,
         farmerName,
-        milkShift,
-        milkType,
+        milkShift: "Morning",
+        milkType: "Cow",
         litreQty,
         fatPercentage,
         snfValue,
@@ -678,14 +805,13 @@ function App() {
       found: {
         litreQty: isLitreQtyDetected,
         fatPercentage: isFatPercentageDetected,
+        snfValue: isSnfDetected || isFatPercentageDetected,
+        ratePerLitre: isRateDetected || isFatPercentageDetected,
+        totalAmount: isAmountDetected || (isLitreQtyDetected && (isRateDetected || isFatPercentageDetected)),
         fatRate: isFatRateDetected,
-        ratePerLitre: isFatPercentageDetected && isFatRateDetected,
-        totalAmount:
-          isLitreQtyDetected && isFatPercentageDetected && isFatRateDetected,
-        snfValue: isFatPercentageDetected,
-        receiptNo: false,
-        date: false,
-        farmerName: false,
+        receiptNo: isReceiptNoDetected,
+        date: isDateDetected,
+        farmerName: isFarmerNameDetected,
       },
     };
   };
@@ -773,6 +899,7 @@ function App() {
             onClearPrefill={() => setPrefillRecord(null)}
             triggerToast={triggerToast}
             showLoading={setLoading}
+            openScanModal={openScanModal}
           />
         )}
 
@@ -1238,7 +1365,7 @@ function App() {
                               totalAmount:
                                 l > 0 && r > 0
                                   ? (l * r).toFixed(2)
-                                  : "Not detected",
+                                  : "",
                             });
                           }}
                           required
@@ -1262,13 +1389,13 @@ function App() {
                               snfValue:
                                 f > 0
                                   ? (f * 0.4 + 7.0).toFixed(1)
-                                  : "Not detected",
+                                  : "",
                               ratePerLitre:
-                                r > 0 ? r.toFixed(2) : "Not detected",
+                                r > 0 ? r.toFixed(2) : "",
                               totalAmount:
                                 l > 0 && r > 0
                                   ? (l * r).toFixed(2)
-                                  : "Not detected",
+                                  : "",
                             });
                           }}
                           required
@@ -1293,11 +1420,11 @@ function App() {
                               ...scannedData,
                               fatRate: val,
                               ratePerLitre:
-                                r > 0 ? r.toFixed(2) : "Not detected",
+                                r > 0 ? r.toFixed(2) : "",
                               totalAmount:
                                 l > 0 && r > 0
                                   ? (l * r).toFixed(2)
-                                  : "Not detected",
+                                  : "",
                             });
                           }}
                         />
@@ -1320,7 +1447,7 @@ function App() {
                               totalAmount:
                                 l > 0 && r > 0
                                   ? (l * r).toFixed(2)
-                                  : "Not detected",
+                                  : "",
                             });
                           }}
                         />
