@@ -133,7 +133,10 @@ function RecordsView({ records, onEditRecord, onDeleteRecord, triggerToast }) {
           </div>
           <div className="col-6 col-md-3">
             <input
-              type="date"
+              type={dateFilter ? "date" : "text"}
+              placeholder="Select Date"
+              onFocus={(e) => (e.target.type = 'date')}
+              onBlur={(e) => { if (!e.target.value) e.target.type = 'text'; }}
               className="form-control form-control-sm"
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}

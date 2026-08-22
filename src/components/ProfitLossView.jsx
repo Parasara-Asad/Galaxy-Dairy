@@ -645,10 +645,26 @@ function ProfitLossView({
                 </select>
               </div>
               <div className="col-6">
-                <input type="date" className="form-control form-control-sm" value={filterFromDate} onChange={(e) => setFilterFromDate(e.target.value)} />
+                <input
+                  type={filterFromDate ? "date" : "text"}
+                  placeholder="From Date"
+                  onFocus={(e) => (e.target.type = 'date')}
+                  onBlur={(e) => { if (!e.target.value) e.target.type = 'text'; }}
+                  className="form-control form-control-sm"
+                  value={filterFromDate}
+                  onChange={(e) => setFilterFromDate(e.target.value)}
+                />
               </div>
               <div className="col-6">
-                <input type="date" className="form-control form-control-sm" value={filterToDate} onChange={(e) => setFilterToDate(e.target.value)} />
+                <input
+                  type={filterToDate ? "date" : "text"}
+                  placeholder="To Date"
+                  onFocus={(e) => (e.target.type = 'date')}
+                  onBlur={(e) => { if (!e.target.value) e.target.type = 'text'; }}
+                  className="form-control form-control-sm"
+                  value={filterToDate}
+                  onChange={(e) => setFilterToDate(e.target.value)}
+                />
               </div>
               <div className="col-12">
                 <button className="btn btn-sm btn-outline-secondary w-100 rounded-pill mt-1" onClick={resetFilters}>Reset Filters</button>
