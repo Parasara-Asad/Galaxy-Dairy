@@ -56,7 +56,7 @@ function MilkEntryView({
   const [receiptNo, setReceiptNo] = useState('');
   const [entryDate, setEntryDate] = useState('');
   const [milkShift, setMilkShift] = useState('Morning');
-  const [milkType, setMilkType] = useState('Cow');
+  const [milkType, setMilkType] = useState('Buffalo');
   const [farmerName, setFarmerName] = useState('Parasara Zahid');
   const [mobileNumber, setMobileNumber] = useState('9879400931');
   const [villageName, setVillageName] = useState('Sindhavadar');
@@ -92,7 +92,7 @@ function MilkEntryView({
       setReceiptNo(prefillRecord.receiptNo || generateReceiptNumber());
       setEntryDate(prefillRecord.date || autoSetDateTime());
       setMilkShift(prefillRecord.milkShift || 'Morning');
-      setMilkType(prefillRecord.milkType || 'Cow');
+      setMilkType(prefillRecord.milkType || 'Buffalo');
       setFarmerName(prefillRecord.farmerName || 'Parasara Zahid');
       setMobileNumber('9879400931');
       setVillageName('Sindhavadar');
@@ -121,7 +121,7 @@ function MilkEntryView({
     setReceiptNo(generateReceiptNumber());
     setEntryDate(autoSetDateTime());
     setMilkShift('Morning');
-    setMilkType('Cow');
+    setMilkType('Buffalo');
     setFarmerName('Parasara Zahid');
     setMobileNumber('9879400931');
     setVillageName('Sindhavdar');
@@ -283,8 +283,8 @@ function MilkEntryView({
                 onChange={(e) => setMilkType(e.target.value)}
                 required
               >
-                <option value="Cow">Cow</option>
                 <option value="Buffalo">Buffalo</option>
+                <option value="Cow">Cow</option>
               </select>
             </div>
           </div>

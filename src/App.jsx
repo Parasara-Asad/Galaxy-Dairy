@@ -537,6 +537,7 @@ function App() {
         },
       });
       const text = result.data.text;
+      console.log("OCR Raw Output Text:", text); // Diagnostic logs
       setOcrStatus("Extracting milk details...");
       const parsed = parseReceiptText(text);
       setScannedData(parsed.data);
@@ -557,23 +558,54 @@ function App() {
     let fatPercentage = "";
     let ratePerLitre = "";
 
+    // Multi-stage extraction helper for high robustness
+    const extractValue = (keywordPatterns, fallbackPatterns) => {
+      // Step 1: Strict matching first
+      for (const pattern of keywordPatterns) {
+        const match = text.match(pattern);
+        if (match) {
+          return parseFloat(match[1]).toString();
+        }
+      }
+      // Step 2: Line-bounded general fallback matching
+      for (const pattern of fallbackPatterns) {
+        const match = text.match(pattern);
+        if (match) {
+          return parseFloat(match[1]).toString();
+        }
+      }
+      return "";
+    };
+
     // 1. Extract Litre / Liter / Litres
-    const litreMatch = text.match(/(?:litre|liter|litres)\s*[:\-]?\s*(\d+(?:\.\d+)?)/i);
-    if (litreMatch) {
-      litreQty = parseFloat(litreMatch[1]).toString();
-    }
+    litreQty = extractValue(
+      [
+        /(?:litre|liter|litres)\s*[:\-=\s]*(\d+(?:\.\d+)?)/i
+      ],
+      [
+        /(?:litre|liter|litres)[^\r\n0-9]*(\d+(?:\.\d+)?)/i
+      ]
+    );
 
     // 2. Extract Fat / FAT
-    const fatMatch = text.match(/(?:fat)\s*%?\s*[:\-]?\s*(\d+(?:\.\d+)?)/i);
-    if (fatMatch) {
-      fatPercentage = parseFloat(fatMatch[1]).toString();
-    }
+    fatPercentage = extractValue(
+      [
+        /(?:fat)\s*\(?%?\)?\s*[:\-=\s]*(\d+(?:\.\d+)?)/i
+      ],
+      [
+        /(?:fat)[^\r\n0-9]*(\d+(?:\.\d+)?)/i
+      ]
+    );
 
     // 3. Extract Rate per Litre
-    const rateMatch = text.match(/(?:rate\s*per\s*litre|rate)\s*[:\-]?\s*(\d+(?:\.\d+)?)/i);
-    if (rateMatch) {
-      ratePerLitre = parseFloat(rateMatch[1]).toString();
-    }
+    ratePerLitre = extractValue(
+      [
+        /(?:rate\s*per\s*litre|rate)\s*[:\-=\s]*(\d+(?:\.\d+)?)/i
+      ],
+      [
+        /(?:rate\s*per\s*litre|rate)[^\r\n0-9]*(\d+(?:\.\d+)?)/i
+      ]
+    );
 
     // Determine what was explicitly detected from OCR
     const isLitreQtyDetected = litreQty !== "";
