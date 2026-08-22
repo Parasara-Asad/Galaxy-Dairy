@@ -50,8 +50,79 @@
     <!-- Main React App Module script -->
     <script type="module" src="/src/main.jsx"></script>
 
-    <!-- Service Worker Registration -->
+    <!-- PWA Install Prompt Modal -->
+    <div class="modal fade" id="pwaInstallModal" tabindex="-1" aria-labelledby="pwaInstallModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered px-3">
+        <div class="modal-content border-0 shadow-lg rounded-4 text-dark">
+          <div class="modal-header border-bottom text-white p-3 rounded-top-4 d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #3b82f6, #2563eb);">
+            <h5 class="modal-title fw-bold d-flex align-items-center gap-2 m-0 fs-5" id="pwaInstallModalLabel">
+              <i class="bi bi-phone-fill"></i>
+              <span>Install Galaxy Dairy</span>
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body p-4 text-center">
+            <img src="/icon-192.png" alt="Galaxy Dairy Logo" class="mb-3 rounded-4 shadow-sm" style="width: 80px; height: 80px;" />
+            <h5 class="fw-bold text-dark mb-2">Get the Mobile App</h5>
+            <p class="text-muted small mb-0">
+              Install Galaxy Dairy on your home screen for quick offline access, push notifications, and a full-screen experience.
+            </p>
+          </div>
+          <div class="modal-footer border-0 p-3 d-flex gap-2">
+            <button type="button" class="btn btn-outline-secondary rounded-pill px-4 flex-fill" data-bs-dismiss="modal">Later</button>
+            <button type="button" id="pwaInstallBtn" class="btn btn-primary rounded-pill px-4 flex-fill fw-bold" style="background-color: #3b82f6; border-color: #3b82f6;">
+              <i class="bi bi-download me-1"></i> Install Now
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Service Worker & PWA Registration -->
     <script>
+      let deferredPrompt;
+      let installModal;
+
+      window.addEventListener('beforeinstallprompt', (e) => {
+        // Prevent Chrome 67 and earlier from automatically showing the prompt
+        e.preventDefault();
+        // Stash the event so it can be triggered later.
+        deferredPrompt = e;
+        // Show the custom modal prompt
+        showPromptModal();
+      });
+
+      function showPromptModal() {
+        const installModalEl = document.getElementById('pwaInstallModal');
+        if (!installModalEl) return;
+        
+        if (typeof bootstrap !== 'undefined') {
+          installModal = new bootstrap.Modal(installModalEl);
+          installModal.show();
+        } else {
+          // If bootstrap isn't loaded yet, try again shortly
+          setTimeout(showPromptModal, 500);
+        }
+      }
+
+      const installBtn = document.getElementById('pwaInstallBtn');
+      if (installBtn) {
+        installBtn.addEventListener('click', async () => {
+          if (!deferredPrompt) return;
+          // Show the native install prompt
+          deferredPrompt.prompt();
+          // Wait for the user to respond to the prompt
+          const { outcome } = await deferredPrompt.userChoice;
+          console.log(`User response to the install prompt: ${outcome}`);
+          // Reset the prompt variable
+          deferredPrompt = null;
+          // Hide the modal
+          if (installModal) {
+            installModal.hide();
+          }
+        });
+      }
+
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('/sw.js')
