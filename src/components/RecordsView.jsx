@@ -135,8 +135,25 @@ function RecordsView({ records, onEditRecord, onDeleteRecord, triggerToast }) {
             <input
               type={dateFilter ? "date" : "text"}
               placeholder="Select Date"
-              onFocus={(e) => (e.target.type = 'date')}
+              onFocus={(e) => {
+                e.target.type = 'date';
+                try {
+                  e.target.showPicker();
+                } catch (err) {
+                  console.warn(err);
+                }
+              }}
               onBlur={(e) => { if (!e.target.value) e.target.type = 'text'; }}
+              onClick={(e) => {
+                e.target.type = 'date';
+                try {
+                  e.target.showPicker();
+                } catch (err) {
+                  console.warn(err);
+                }
+              }}
+              onKeyDown={(e) => e.preventDefault()}
+              inputMode="none"
               className="form-control form-control-sm"
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}

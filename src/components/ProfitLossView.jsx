@@ -487,10 +487,52 @@ function ProfitLossView({
             {weeklyPeriod === 'custom' && (
               <div className="row g-2 mb-3">
                 <div className="col-6">
-                  <input type="date" className="form-control form-control-sm" value={weeklyStartDate} onChange={(e) => setWeeklyStartDate(e.target.value)} />
+                  <input
+                    type="date"
+                    className="form-control form-control-sm"
+                    value={weeklyStartDate}
+                    onChange={(e) => setWeeklyStartDate(e.target.value)}
+                    onClick={(e) => {
+                      try {
+                        e.target.showPicker();
+                      } catch (err) {
+                        console.warn(err);
+                      }
+                    }}
+                    onFocus={(e) => {
+                      try {
+                        e.target.showPicker();
+                      } catch (err) {
+                        console.warn(err);
+                      }
+                    }}
+                    onKeyDown={(e) => e.preventDefault()}
+                    inputMode="none"
+                  />
                 </div>
                 <div className="col-6">
-                  <input type="date" className="form-control form-control-sm" value={weeklyEndDate} onChange={(e) => setWeeklyEndDate(e.target.value)} />
+                  <input
+                    type="date"
+                    className="form-control form-control-sm"
+                    value={weeklyEndDate}
+                    onChange={(e) => setWeeklyEndDate(e.target.value)}
+                    onClick={(e) => {
+                      try {
+                        e.target.showPicker();
+                      } catch (err) {
+                        console.warn(err);
+                      }
+                    }}
+                    onFocus={(e) => {
+                      try {
+                        e.target.showPicker();
+                      } catch (err) {
+                        console.warn(err);
+                      }
+                    }}
+                    onKeyDown={(e) => e.preventDefault()}
+                    inputMode="none"
+                  />
                 </div>
               </div>
             )}
@@ -550,7 +592,29 @@ function ProfitLossView({
                   <input type="number" step="0.01" min="0.01" className="form-control form-control-sm" placeholder="Amount (₹)" value={incomeAmount} onChange={(e) => setIncomeAmount(e.target.value)} inputMode="decimal" required />
                 </div>
                 <div className="col-6">
-                  <input type="date" className="form-control form-control-sm" value={incomeDate} onChange={(e) => setIncomeDate(e.target.value)} required />
+                  <input
+                    type="date"
+                    className="form-control form-control-sm"
+                    value={incomeDate}
+                    onChange={(e) => setIncomeDate(e.target.value)}
+                    onClick={(e) => {
+                      try {
+                        e.target.showPicker();
+                      } catch (err) {
+                        console.warn(err);
+                      }
+                    }}
+                    onFocus={(e) => {
+                      try {
+                        e.target.showPicker();
+                      } catch (err) {
+                        console.warn(err);
+                      }
+                    }}
+                    onKeyDown={(e) => e.preventDefault()}
+                    inputMode="none"
+                    required
+                  />
                 </div>
                 <div className="col-12 col-sm-6">
                   <select className="form-select form-select-sm" value={incomeCategory} onChange={(e) => setIncomeCategory(e.target.value)}>
@@ -579,7 +643,29 @@ function ProfitLossView({
                   <input type="number" step="0.01" min="0.01" className="form-control form-control-sm" placeholder="Amount (₹)" value={expenseAmount} onChange={(e) => setExpenseAmount(e.target.value)} inputMode="decimal" required />
                 </div>
                 <div className="col-6">
-                  <input type="date" className="form-control form-control-sm" value={expenseDate} onChange={(e) => setExpenseDate(e.target.value)} required />
+                  <input
+                    type="date"
+                    className="form-control form-control-sm"
+                    value={expenseDate}
+                    onChange={(e) => setExpenseDate(e.target.value)}
+                    onClick={(e) => {
+                      try {
+                        e.target.showPicker();
+                      } catch (err) {
+                        console.warn(err);
+                      }
+                    }}
+                    onFocus={(e) => {
+                      try {
+                        e.target.showPicker();
+                      } catch (err) {
+                        console.warn(err);
+                      }
+                    }}
+                    onKeyDown={(e) => e.preventDefault()}
+                    inputMode="none"
+                    required
+                  />
                 </div>
                 <div className="col-12 col-sm-6">
                   <select className="form-select form-select-sm" value={expenseCategory} onChange={(e) => setExpenseCategory(e.target.value)}>

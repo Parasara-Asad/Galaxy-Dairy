@@ -223,6 +223,7 @@ function App() {
     releaseNotes: "",
   });
   const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
 
   // Sync states to local storage
   useEffect(() => {
@@ -335,17 +336,7 @@ function App() {
   };
 
   const handleResetAllData = () => {
-    const confirmed = window.confirm("WARNING: Are you absolutely sure you want to delete all data? This will permanently delete all Milk Collection records, Income logs, and Expense logs. This action cannot be undone!");
-    if (confirmed) {
-      setRecords([]);
-      setIncomeRecords([]);
-      setExpenseRecords([]);
-      localStorage.removeItem("mcms_records");
-      localStorage.removeItem("mcms_income_records");
-      localStorage.removeItem("mcms_expense_records");
-      localStorage.removeItem("last_entered_snf");
-      triggerToast("All application data has been successfully deleted.", "danger");
-    }
+    setShowResetModal(true);
   };
 
   // --- Income Handlers ---
@@ -1482,6 +1473,74 @@ function App() {
                   }}
                 >
                   <i className="bi bi-download me-1"></i> Update Now
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reset & Delete All Data Modal */}
+      {showResetModal && (
+        <div
+          className="modal show d-block"
+          tabIndex="-1"
+          style={{ backgroundColor: "rgba(0, 0, 0, 0.6)", zIndex: 1160 }}
+        >
+          <div className="modal-dialog modal-dialog-centered px-3">
+            <div className="modal-content border-0 shadow-lg rounded-4">
+              <div className="modal-header border-bottom bg-danger text-white p-3 rounded-top-4 d-flex justify-content-between align-items-center">
+                <h5 className="modal-title fw-bold d-flex align-items-center gap-2 m-0 fs-5">
+                  <i className="bi bi-exclamation-triangle-fill"></i>
+                  <span>Delete All Data?</span>
+                </h5>
+                <button
+                  type="button"
+                  className="btn-close btn-close-white"
+                  onClick={() => setShowResetModal(false)}
+                  aria-label="Close"
+                ></button>
+              </div>
+              <div className="modal-body p-4">
+                <p className="fw-semibold fs-6 mb-3">
+                  Are you absolutely sure you want to delete all data?
+                </p>
+                
+                <div className="alert alert-danger py-2 mb-3 small d-flex align-items-start gap-2">
+                  <i className="bi bi-info-circle-fill text-danger fs-5 mt-0.5"></i>
+                  <span>
+                    This action will permanently delete all Milk Collection records, Income logs, and Expense logs. This action cannot be undone!
+                  </span>
+                </div>
+                
+                <p className="text-muted small mb-0">
+                  All local application data and settings will be reset to default.
+                </p>
+              </div>
+              <div className="modal-footer border-0 p-3 d-flex gap-2">
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary rounded-pill px-4 flex-fill"
+                  onClick={() => setShowResetModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-danger rounded-pill px-4 flex-fill fw-bold"
+                  onClick={() => {
+                    setRecords([]);
+                    setIncomeRecords([]);
+                    setExpenseRecords([]);
+                    localStorage.removeItem("mcms_records");
+                    localStorage.removeItem("mcms_income_records");
+                    localStorage.removeItem("mcms_expense_records");
+                    localStorage.removeItem("last_entered_snf");
+                    triggerToast("All application data has been successfully deleted.", "danger");
+                    setShowResetModal(false);
+                  }}
+                >
+                  Delete Everything
                 </button>
               </div>
             </div>

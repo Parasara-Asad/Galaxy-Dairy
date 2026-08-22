@@ -230,6 +230,22 @@ function MilkEntryView({
                 className="form-control"
                 value={entryDate}
                 onChange={(e) => setEntryDate(e.target.value)}
+                onClick={(e) => {
+                  try {
+                    e.target.showPicker();
+                  } catch (err) {
+                    console.warn("Picker not supported", err);
+                  }
+                }}
+                onFocus={(e) => {
+                  try {
+                    e.target.showPicker();
+                  } catch (err) {
+                    console.warn("Picker not supported", err);
+                  }
+                }}
+                onKeyDown={(e) => e.preventDefault()}
+                inputMode="none"
                 required
               />
             </div>
