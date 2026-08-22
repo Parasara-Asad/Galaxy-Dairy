@@ -199,6 +199,7 @@ function App() {
   const [ocrLoading, setOcrLoading] = useState(false);
   const [capturedImage, setCapturedImage] = useState(null);
   const [isReviewOpen, setIsReviewOpen] = useState(false);
+  const [existingRate, setExistingRate] = useState("");
   const [scannedData, setScannedData] = useState({
     receiptNo: "",
     date: "",
@@ -376,7 +377,12 @@ function App() {
   };
 
   // --- Camera & OCR Scanner logic (Global FAB hook) ---
-  const openScanModal = async () => {
+  const openScanModal = async (currentRate) => {
+    let rateStr = "";
+    if (typeof currentRate === "string") {
+      rateStr = currentRate.trim();
+    }
+    setExistingRate(rateStr);
     try {
       if (navigator.permissions && navigator.permissions.query) {
         try {
@@ -536,8 +542,11 @@ function App() {
       });
       const text = result.data.text;
       console.log("OCR Raw Output Text:", text); // Diagnostic logs
-      setOcrStatus("Extracting milk details...");
       const parsed = parseReceiptText(text);
+      if (existingRate !== "") {
+        parsed.data.ratePerLitre = existingRate;
+        parsed.found.ratePerLitre = true;
+      }
       setScannedData(parsed.data);
       setScannedConfidence(parsed.found);
       setOcrLoading(false);

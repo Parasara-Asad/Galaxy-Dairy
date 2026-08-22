@@ -214,7 +214,7 @@ function MilkEntryView({
           <button
             type="button"
             className="btn btn-outline-primary btn-sm rounded-pill px-3 d-flex align-items-center gap-1"
-            onClick={openScanModal}
+            onClick={() => openScanModal(ratePerLitre)}
             style={{ minHeight: "36px" }}
           >
             <i className="bi bi-camera-fill"></i>
