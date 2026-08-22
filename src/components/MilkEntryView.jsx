@@ -59,7 +59,10 @@ function MilkEntryView({
 }) {
   const [receiptNo, setReceiptNo] = useState("");
   const [entryDate, setEntryDate] = useState("");
-  const [milkShift, setMilkShift] = useState("Morning");
+  const [milkShift, setMilkShift] = useState(() => {
+    const now = new Date();
+    return now.getHours() >= 12 ? "Evening" : "Morning";
+  });
   const [milkType, setMilkType] = useState("Buffalo");
   const [farmerName, setFarmerName] = useState("Parasara Zahid");
   const [mobileNumber, setMobileNumber] = useState("9879400931");
@@ -68,6 +71,26 @@ function MilkEntryView({
   const [fatPercentage, setFatPercentage] = useState("");
   const [ratePerLitre, setRatePerLitre] = useState("");
   const [entryRemarks, setEntryRemarks] = useState("");
+
+  const [customFatRates, setCustomFatRates] = useState(() => {
+    const stored = localStorage.getItem("mcms_custom_fat_rates");
+    return stored ? JSON.parse(stored) : {};
+  });
+
+  const getAutoShift = (dateTimeString) => {
+    if (dateTimeString) {
+      const parts = dateTimeString.split('T');
+      if (parts.length === 2) {
+        const timePart = parts[1];
+        const hour = parseInt(timePart.split(':')[0], 10);
+        if (!isNaN(hour)) {
+          return hour >= 12 ? "Evening" : "Morning";
+        }
+      }
+    }
+    const now = new Date();
+    return now.getHours() >= 12 ? "Evening" : "Morning";
+  };
 
   // Handle Editing State
   useEffect(() => {
@@ -94,8 +117,9 @@ function MilkEntryView({
   useEffect(() => {
     if (prefillRecord) {
       setReceiptNo(prefillRecord.receiptNo || generateReceiptNumber());
-      setEntryDate(prefillRecord.date || autoSetDateTime());
-      setMilkShift(prefillRecord.milkShift || "Morning");
+      const defaultDate = prefillRecord.date || autoSetDateTime();
+      setEntryDate(defaultDate);
+      setMilkShift(prefillRecord.milkShift || getAutoShift(defaultDate));
       setMilkType(prefillRecord.milkType || "Buffalo");
       setFarmerName(prefillRecord.farmerName || "Parasara Zahid");
       setMobileNumber("9879400931");
@@ -122,8 +146,9 @@ function MilkEntryView({
 
   const resetForm = () => {
     setReceiptNo(generateReceiptNumber());
-    setEntryDate(autoSetDateTime());
-    setMilkShift("Morning");
+    const defaultDate = autoSetDateTime();
+    setEntryDate(defaultDate);
+    setMilkShift(getAutoShift(defaultDate));
     setMilkType("Buffalo");
     setFarmerName("Parasara Zahid");
     setMobileNumber("9879400931");
@@ -135,12 +160,17 @@ function MilkEntryView({
     setEditingRecord(null);
   };
 
-  // Fat change handler: auto calculates Rate Per Litre
+  // Fat change handler: auto calculates Rate Per Litre or uses user's custom rate
   const handleFatChange = (val) => {
     setFatPercentage(val);
     const f = parseFloat(val) || 0;
     if (f > 0) {
-      setRatePerLitre(calculateRate(f).toString());
+      const customRate = customFatRates[val] || customFatRates[f.toString()];
+      if (customRate) {
+        setRatePerLitre(customRate);
+      } else {
+        setRatePerLitre(calculateRate(f).toString());
+      }
     } else {
       setRatePerLitre("");
     }
@@ -194,6 +224,18 @@ function MilkEntryView({
       } else {
         onSaveRecord(recordData);
       }
+
+      // Save custom fat rate mapping if user entered ratePerLitre manually or saved it
+      if (fatVal > 0 && rateVal > 0) {
+        const updatedCustomRates = {
+          ...customFatRates,
+          [fatPercentage]: ratePerLitre,
+          [fatVal.toString()]: ratePerLitre
+        };
+        setCustomFatRates(updatedCustomRates);
+        localStorage.setItem("mcms_custom_fat_rates", JSON.stringify(updatedCustomRates));
+      }
+
       resetForm();
       showLoading(false);
     }, 300);
@@ -244,7 +286,11 @@ function MilkEntryView({
                 type="datetime-local"
                 className="form-control"
                 value={entryDate}
-                onChange={(e) => setEntryDate(e.target.value)}
+                onChange={(e) => {
+                  const newDate = e.target.value;
+                  setEntryDate(newDate);
+                  setMilkShift(getAutoShift(newDate));
+                }}
                 onClick={(e) => {
                   try {
                     e.target.showPicker();
