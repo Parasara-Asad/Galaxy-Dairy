@@ -334,6 +334,20 @@ function App() {
     triggerToast("Record deleted.", "danger");
   };
 
+  const handleResetAllData = () => {
+    const confirmed = window.confirm("WARNING: Are you absolutely sure you want to delete all data? This will permanently delete all Milk Collection records, Income logs, and Expense logs. This action cannot be undone!");
+    if (confirmed) {
+      setRecords([]);
+      setIncomeRecords([]);
+      setExpenseRecords([]);
+      localStorage.removeItem("mcms_records");
+      localStorage.removeItem("mcms_income_records");
+      localStorage.removeItem("mcms_expense_records");
+      localStorage.removeItem("last_entered_snf");
+      triggerToast("All application data has been successfully deleted.", "danger");
+    }
+  };
+
   // --- Income Handlers ---
   const handleAddIncome = (incomeData) => {
     const income = {
@@ -904,6 +918,20 @@ function App() {
                       </button>
                     </div>
                   </div>
+
+                  <button
+                    type="button"
+                    className="list-group-item list-group-item-action d-flex align-items-center justify-content-between py-3 border-0 rounded-3 mb-2 bg-light text-danger"
+                    onClick={handleResetAllData}
+                  >
+                    <div className="d-flex align-items-center gap-3">
+                      <div className="bg-danger-subtle text-danger p-2 rounded-circle d-flex">
+                        <i className="bi bi-exclamation-triangle-fill fs-5"></i>
+                      </div>
+                      <span className="fw-semibold text-danger">Reset & Delete All Data</span>
+                    </div>
+                    <i className="bi bi-chevron-right text-danger"></i>
+                  </button>
                 </div>
                 <div className="text-center mt-5 text-muted small-text">
                   <p className="mb-0">Galaxy Dairy Mobile App v2.1.0</p>
