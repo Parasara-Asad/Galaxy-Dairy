@@ -137,7 +137,12 @@ function MilkEntryView({
     setFatPercentage(val);
     const f = parseFloat(val) || 0;
     if (f > 0) {
-      setSnfValue((f * 0.4 + 7.0).toFixed(1));
+      const savedSnf = localStorage.getItem('last_entered_snf');
+      if (savedSnf) {
+        setSnfValue(savedSnf);
+      } else {
+        setSnfValue((f * 0.4 + 7.0).toFixed(1));
+      }
       setRatePerLitre(calculateRate(f).toString());
     } else {
       setSnfValue('');
@@ -337,7 +342,15 @@ function MilkEntryView({
                 step="0.1"
                 className="form-control"
                 value={snfValue}
-                onChange={(e) => setSnfValue(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSnfValue(val);
+                  if (val.trim() === '') {
+                    localStorage.removeItem('last_entered_snf');
+                  } else {
+                    localStorage.setItem('last_entered_snf', val);
+                  }
+                }}
                 placeholder="Auto"
                 inputMode="decimal"
               />

@@ -1,6 +1,6 @@
 {
   "version": "1.0.1",
-  "apkUrl": "https://galaxy-dairy.netlify.app/",
+  "apkUrl": "https://galaxy-dairy.netlify.app/galaxy-dairy.apk",
   "forceUpdate": false,
   "releaseNotes": "Naya scan option aur camera permission issues fix kiye gaye hain."
 }

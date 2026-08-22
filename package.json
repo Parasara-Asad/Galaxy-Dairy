@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node scripts/update-sw-version.js",
     "lint": "oxlint",
     "preview": "vite preview",
     "cap:sync": "npx cap sync",
