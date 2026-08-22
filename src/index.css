@@ -738,3 +738,24 @@ body.dark-mode .form-control::placeholder {
   color: #64748B !important;
   opacity: 1 !important; /* Overrides default browser opacity fade */
 }
+
+/* Hide default native calendar icon in date/datetime inputs */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  display: none !important;
+  -webkit-appearance: none;
+}
+
+/* Custom styled input group texts to match form controls */
+.input-group-text {
+  background-color: var(--bg-main) !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-secondary) !important;
+}
+
+body.dark-mode .input-group-text {
+  background-color: #202B3B !important;
+  border-color: #334155 !important;
+  color: var(--text-secondary) !important;
+}
+

@@ -132,32 +132,51 @@ function RecordsView({ records, onEditRecord, onDeleteRecord, triggerToast }) {
             </div>
           </div>
           <div className="col-6 col-md-3">
-            <input
-              type={dateFilter ? "date" : "text"}
-              placeholder="Select Date"
-              onFocus={(e) => {
-                e.target.type = 'date';
-                try {
-                  e.target.showPicker();
-                } catch (err) {
-                  console.warn(err);
-                }
-              }}
-              onBlur={(e) => { if (!e.target.value) e.target.type = 'text'; }}
-              onClick={(e) => {
-                e.target.type = 'date';
-                try {
-                  e.target.showPicker();
-                } catch (err) {
-                  console.warn(err);
-                }
-              }}
-              onKeyDown={(e) => e.preventDefault()}
-              inputMode="none"
-              className="form-control form-control-sm"
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
-            />
+            <div className="input-group input-group-sm">
+              <input
+                type={dateFilter ? "date" : "text"}
+                placeholder="Select Date"
+                onFocus={(e) => {
+                  e.target.type = 'date';
+                  try {
+                    e.target.showPicker();
+                  } catch (err) {
+                    console.warn(err);
+                  }
+                }}
+                onBlur={(e) => { if (!e.target.value) e.target.type = 'text'; }}
+                onClick={(e) => {
+                  e.target.type = 'date';
+                  try {
+                    e.target.showPicker();
+                  } catch (err) {
+                    console.warn(err);
+                  }
+                }}
+                onKeyDown={(e) => e.preventDefault()}
+                inputMode="none"
+                className="form-control form-control-sm border-end-0"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+              />
+              <span 
+                className="input-group-text border-start-0 text-secondary bg-light"
+                style={{ cursor: 'pointer' }}
+                onClick={(e) => {
+                  const input = e.currentTarget.previousElementSibling;
+                  if (input) {
+                    input.type = 'date';
+                    try {
+                      input.showPicker();
+                    } catch (err) {
+                      console.warn(err);
+                    }
+                  }
+                }}
+              >
+                <i className="bi bi-calendar3"></i>
+              </span>
+            </div>
           </div>
           <div className="col-6 col-md-4">
             <select

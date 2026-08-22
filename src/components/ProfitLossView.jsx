@@ -731,26 +731,98 @@ function ProfitLossView({
                 </select>
               </div>
               <div className="col-6">
-                <input
-                  type={filterFromDate ? "date" : "text"}
-                  placeholder="From Date"
-                  onFocus={(e) => (e.target.type = 'date')}
-                  onBlur={(e) => { if (!e.target.value) e.target.type = 'text'; }}
-                  className="form-control form-control-sm"
-                  value={filterFromDate}
-                  onChange={(e) => setFilterFromDate(e.target.value)}
-                />
+                <div className="input-group input-group-sm">
+                  <input
+                    type={filterFromDate ? "date" : "text"}
+                    placeholder="From Date"
+                    onFocus={(e) => {
+                      e.target.type = 'date';
+                      try {
+                        e.target.showPicker();
+                      } catch (err) {
+                        console.warn(err);
+                      }
+                    }}
+                    onBlur={(e) => { if (!e.target.value) e.target.type = 'text'; }}
+                    onClick={(e) => {
+                      e.target.type = 'date';
+                      try {
+                        e.target.showPicker();
+                      } catch (err) {
+                        console.warn(err);
+                      }
+                    }}
+                    onKeyDown={(e) => e.preventDefault()}
+                    inputMode="none"
+                    className="form-control form-control-sm border-end-0"
+                    value={filterFromDate}
+                    onChange={(e) => setFilterFromDate(e.target.value)}
+                  />
+                  <span 
+                    className="input-group-text border-start-0 text-secondary bg-light"
+                    style={{ cursor: 'pointer' }}
+                    onClick={(e) => {
+                      const input = e.currentTarget.previousElementSibling;
+                      if (input) {
+                        input.type = 'date';
+                        try {
+                          input.showPicker();
+                        } catch (err) {
+                          console.warn(err);
+                        }
+                      }
+                    }}
+                  >
+                    <i className="bi bi-calendar3"></i>
+                  </span>
+                </div>
               </div>
               <div className="col-6">
-                <input
-                  type={filterToDate ? "date" : "text"}
-                  placeholder="To Date"
-                  onFocus={(e) => (e.target.type = 'date')}
-                  onBlur={(e) => { if (!e.target.value) e.target.type = 'text'; }}
-                  className="form-control form-control-sm"
-                  value={filterToDate}
-                  onChange={(e) => setFilterToDate(e.target.value)}
-                />
+                <div className="input-group input-group-sm">
+                  <input
+                    type={filterToDate ? "date" : "text"}
+                    placeholder="To Date"
+                    onFocus={(e) => {
+                      e.target.type = 'date';
+                      try {
+                        e.target.showPicker();
+                      } catch (err) {
+                        console.warn(err);
+                      }
+                    }}
+                    onBlur={(e) => { if (!e.target.value) e.target.type = 'text'; }}
+                    onClick={(e) => {
+                      e.target.type = 'date';
+                      try {
+                        e.target.showPicker();
+                      } catch (err) {
+                        console.warn(err);
+                      }
+                    }}
+                    onKeyDown={(e) => e.preventDefault()}
+                    inputMode="none"
+                    className="form-control form-control-sm border-end-0"
+                    value={filterToDate}
+                    onChange={(e) => setFilterToDate(e.target.value)}
+                  />
+                  <span 
+                    className="input-group-text border-start-0 text-secondary bg-light"
+                    style={{ cursor: 'pointer' }}
+                    onClick={(e) => {
+                      const input = e.currentTarget.previousElementSibling;
+                      if (input) {
+                        input.type = 'date';
+                        try {
+                          input.showPicker();
+                        } catch (err) {
+                          console.warn(err);
+                        }
+                      }
+                    }}
+                  >
+                    <i className="bi bi-calendar3"></i>
+                  </span>
+                </div>
               </div>
               <div className="col-12">
                 <button className="btn btn-sm btn-outline-secondary w-100 rounded-pill mt-1" onClick={resetFilters}>Reset Filters</button>
