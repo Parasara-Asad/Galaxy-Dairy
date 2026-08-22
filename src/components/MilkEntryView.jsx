@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 
 const RATE_CHART = {
   3.0: 35.0,
@@ -22,10 +22,13 @@ const RATE_CHART = {
 function calculateRate(fat) {
   const fatVal = parseFloat(fat);
   if (isNaN(fatVal) || fatVal <= 0) return 0;
-  const availableFats = Object.keys(RATE_CHART).map(Number).sort((a, b) => a - b);
+  const availableFats = Object.keys(RATE_CHART)
+    .map(Number)
+    .sort((a, b) => a - b);
   if (RATE_CHART[fatVal]) return RATE_CHART[fatVal];
   if (fatVal <= availableFats[0]) return RATE_CHART[availableFats[0]];
-  if (fatVal >= availableFats[availableFats.length - 1]) return RATE_CHART[availableFats[availableFats.length - 1]];
+  if (fatVal >= availableFats[availableFats.length - 1])
+    return RATE_CHART[availableFats[availableFats.length - 1]];
   let lower = availableFats[0];
   let upper = availableFats[availableFats.length - 1];
   for (let i = 0; i < availableFats.length - 1; i++) {
@@ -37,33 +40,34 @@ function calculateRate(fat) {
   }
   const rateLower = RATE_CHART[lower];
   const rateUpper = RATE_CHART[upper];
-  const calculatedRate = rateLower + ((fatVal - lower) / (upper - lower)) * (rateUpper - rateLower);
+  const calculatedRate =
+    rateLower + ((fatVal - lower) / (upper - lower)) * (rateUpper - rateLower);
   return parseFloat(calculatedRate.toFixed(2));
 }
 
-function MilkEntryView({ 
-  records, 
-  onSaveRecord, 
-  onUpdateRecord, 
-  editingRecord, 
-  setEditingRecord, 
-  prefillRecord, 
-  onClearPrefill, 
-  triggerToast, 
+function MilkEntryView({
+  records,
+  onSaveRecord,
+  onUpdateRecord,
+  editingRecord,
+  setEditingRecord,
+  prefillRecord,
+  onClearPrefill,
+  triggerToast,
   showLoading,
-  openScanModal
+  openScanModal,
 }) {
-  const [receiptNo, setReceiptNo] = useState('');
-  const [entryDate, setEntryDate] = useState('');
-  const [milkShift, setMilkShift] = useState('Morning');
-  const [milkType, setMilkType] = useState('Buffalo');
-  const [farmerName, setFarmerName] = useState('Parasara Zahid');
-  const [mobileNumber, setMobileNumber] = useState('9879400931');
-  const [villageName, setVillageName] = useState('Sindhavadar');
-  const [litreQty, setLitreQty] = useState('');
-  const [fatPercentage, setFatPercentage] = useState('');
-  const [ratePerLitre, setRatePerLitre] = useState('');
-  const [entryRemarks, setEntryRemarks] = useState('');
+  const [receiptNo, setReceiptNo] = useState("");
+  const [entryDate, setEntryDate] = useState("");
+  const [milkShift, setMilkShift] = useState("Morning");
+  const [milkType, setMilkType] = useState("Buffalo");
+  const [farmerName, setFarmerName] = useState("Parasara Zahid");
+  const [mobileNumber, setMobileNumber] = useState("9879400931");
+  const [villageName, setVillageName] = useState("Sindhavadar");
+  const [litreQty, setLitreQty] = useState("");
+  const [fatPercentage, setFatPercentage] = useState("");
+  const [ratePerLitre, setRatePerLitre] = useState("");
+  const [entryRemarks, setEntryRemarks] = useState("");
 
   // Handle Editing State
   useEffect(() => {
@@ -73,12 +77,14 @@ function MilkEntryView({
       setMilkShift(editingRecord.milkShift);
       setMilkType(editingRecord.milkType);
       setFarmerName(editingRecord.farmerName);
-      setMobileNumber(editingRecord.mobileNumber || '9879400931');
-      setVillageName(editingRecord.villageName || 'Sindhavadar');
+      setMobileNumber(editingRecord.mobileNumber || "9879400931");
+      setVillageName(editingRecord.villageName || "Sindhavadar");
       setLitreQty(editingRecord.litreQty.toString());
       setFatPercentage(editingRecord.fatPercentage.toString());
-      setRatePerLitre(editingRecord.ratePerLitre ? editingRecord.ratePerLitre.toString() : '');
-      setEntryRemarks(editingRecord.remarks || '');
+      setRatePerLitre(
+        editingRecord.ratePerLitre ? editingRecord.ratePerLitre.toString() : "",
+      );
+      setEntryRemarks(editingRecord.remarks || "");
     } else {
       resetForm();
     }
@@ -89,22 +95,22 @@ function MilkEntryView({
     if (prefillRecord) {
       setReceiptNo(prefillRecord.receiptNo || generateReceiptNumber());
       setEntryDate(prefillRecord.date || autoSetDateTime());
-      setMilkShift(prefillRecord.milkShift || 'Morning');
-      setMilkType(prefillRecord.milkType || 'Buffalo');
-      setFarmerName(prefillRecord.farmerName || 'Parasara Zahid');
-      setMobileNumber('9879400931');
-      setVillageName('Sindhavadar');
-      setLitreQty(prefillRecord.litreQty || '');
-      setFatPercentage(prefillRecord.fatPercentage || '');
-      setRatePerLitre(prefillRecord.ratePerLitre || '');
-      setEntryRemarks('Scanned via Receipt OCR');
+      setMilkShift(prefillRecord.milkShift || "Morning");
+      setMilkType(prefillRecord.milkType || "Buffalo");
+      setFarmerName(prefillRecord.farmerName || "Parasara Zahid");
+      setMobileNumber("9879400931");
+      setVillageName("Sindhavadar");
+      setLitreQty(prefillRecord.litreQty || "");
+      setFatPercentage(prefillRecord.fatPercentage || "");
+      setRatePerLitre(prefillRecord.ratePerLitre || "");
+      setEntryRemarks("Scanned via Receipt OCR");
       onClearPrefill(); // Clear from App state
     }
   }, [prefillRecord]);
 
   const generateReceiptNumber = () => {
     const timestamp = Date.now().toString().slice(-4);
-    const count = (records.length + 1).toString().padStart(3, '0');
+    const count = (records.length + 1).toString().padStart(3, "0");
     return `RC-${timestamp}${count}`;
   };
 
@@ -117,15 +123,15 @@ function MilkEntryView({
   const resetForm = () => {
     setReceiptNo(generateReceiptNumber());
     setEntryDate(autoSetDateTime());
-    setMilkShift('Morning');
-    setMilkType('Buffalo');
-    setFarmerName('Parasara Zahid');
-    setMobileNumber('9879400931');
-    setVillageName('Sindhavdar');
-    setLitreQty('');
-    setFatPercentage('');
-    setRatePerLitre('');
-    setEntryRemarks('');
+    setMilkShift("Morning");
+    setMilkType("Buffalo");
+    setFarmerName("Parasara Zahid");
+    setMobileNumber("9879400931");
+    setVillageName("Sindhavdar");
+    setLitreQty("");
+    setFatPercentage("");
+    setRatePerLitre("");
+    setEntryRemarks("");
     setEditingRecord(null);
   };
 
@@ -136,7 +142,7 @@ function MilkEntryView({
     if (f > 0) {
       setRatePerLitre(calculateRate(f).toString());
     } else {
-      setRatePerLitre('');
+      setRatePerLitre("");
     }
   };
 
@@ -149,13 +155,19 @@ function MilkEntryView({
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (!farmerName.trim() || !mobileNumber.trim() || !villageName.trim() || isNaN(litreVal) || isNaN(fatVal)) {
-      triggerToast('Please fill in all required fields.', 'warning');
+    if (
+      !farmerName.trim() ||
+      !mobileNumber.trim() ||
+      !villageName.trim() ||
+      isNaN(litreVal) ||
+      isNaN(fatVal)
+    ) {
+      triggerToast("Please fill in all required fields.", "warning");
       return;
     }
 
     if (litreVal <= 0 || fatVal <= 0) {
-      triggerToast('Litre and Fat must be greater than zero.', 'warning');
+      triggerToast("Litre and Fat must be greater than zero.", "warning");
       return;
     }
 
@@ -192,16 +204,18 @@ function MilkEntryView({
       <div className="d-flex justify-content-between align-items-center mb-3">
         <div className="text-dark">
           <h4 className="fw-bold mb-1">
-            {editingRecord ? 'Edit Collection Entry' : 'Milk Collection Entry'}
+            {editingRecord ? "Edit Collection Entry" : "Milk Collection Entry"}
           </h4>
-          <p className="text-muted small mb-0">Record and verify farmer milk deposits.</p>
+          <p className="text-muted small mb-0">
+            Record and verify farmer milk deposits.
+          </p>
         </div>
         {!editingRecord && (
           <button
             type="button"
             className="btn btn-outline-primary btn-sm rounded-pill px-3 d-flex align-items-center gap-1"
             onClick={openScanModal}
-            style={{ minHeight: '36px' }}
+            style={{ minHeight: "36px" }}
           >
             <i className="bi bi-camera-fill"></i>
             <span>Scan Receipt</span>
@@ -252,7 +266,7 @@ function MilkEntryView({
             </div>
             <div className="col-6">
               <label className="form-label">Shift</label>
-              <select 
+              <select
                 className="form-select"
                 value={milkShift}
                 onChange={(e) => setMilkShift(e.target.value)}
@@ -264,7 +278,7 @@ function MilkEntryView({
             </div>
             <div className="col-6">
               <label className="form-label">Milk Type</label>
-              <select 
+              <select
                 className="form-select"
                 value={milkType}
                 onChange={(e) => setMilkType(e.target.value)}
@@ -365,12 +379,14 @@ function MilkEntryView({
               />
             </div>
             <div className="col-12 mt-3">
-              <label className="form-label text-success fw-bold">Total Amount</label>
+              <label className="form-label text-success fw-bold">
+                Total Amount
+              </label>
               <input
                 type="text"
                 className="form-control form-control-readonly text-success fw-bold fs-5 border border-success-subtle bg-success-subtle bg-opacity-10"
-                style={{ minHeight: '52px' }}
-                value={totalAmount > 0 ? `₹${totalAmount.toFixed(2)}` : ''}
+                style={{ minHeight: "52px" }}
+                value={totalAmount > 0 ? `₹${totalAmount.toFixed(2)}` : ""}
                 readOnly
                 placeholder="Auto"
               />
