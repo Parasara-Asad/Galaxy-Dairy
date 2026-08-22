@@ -1,0 +1,740 @@
+/* ==========================================================================
+   Galaxy Dairy Mobile UI Redesign Stylesheet
+   ========================================================================== */
+
+:root {
+  --primary-color: #3b82f6;          /* Calm medium blue */
+  --primary-dark: #2563eb;
+  --primary-light: #eff6ff;
+  --success-color: #10b981;          /* Natural soft green */
+  --danger-color: #ef4444;           /* Soft red */
+  --warning-color: #f59e0b;          /* Soft amber */
+  
+  --bg-main: #f3f4f6;                /* Soft blue-gray cream */
+  --bg-card: #ffffff;                /* Warm soft white */
+  --text-primary: #1f2937;           /* Charcoal */
+  --text-secondary: #6b7280;         /* Muted gray */
+  --border-color: #e5e7eb;           /* Subtle border */
+  
+  --radius-card: 16px;
+  --radius-pill: 50px;
+  --transition-speed: 0.25s;
+  
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+body.dark-mode {
+  --bg-main: #121826;                /* Dark navy background */
+  --bg-card: #1B2433;                /* Main card background */
+  --bg-card-elevated: #202B3B;       /* Elevated card background */
+  --bg-hover: #273449;               /* Hover/pressed surface */
+  --text-primary: #CBD5E1;           /* Normal readable text */
+  --text-secondary: #9CA3AF;         /* Secondary text */
+  --text-muted: #64748B;             /* Muted text */
+  --border-color: #334155;           /* Border color */
+  --primary-light: #1E3A5F;          /* Soft blue background */
+  --primary-color: #5B9CFF;          /* Primary blue accent */
+  --success-color: #5FAF8A;          /* Success green */
+  --danger-color: #D97777;           /* Danger red */
+  --warning-color: #D9A441;          /* Warning amber */
+  
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent; /* Disable tap highlight flash on mobile */
+}
+
+html.font-size-small {
+  font-size: 14px !important;
+}
+html.font-size-medium {
+  font-size: 16px !important;
+}
+html.font-size-large {
+  font-size: 18px !important;
+}
+
+/* Responsive font scaling for mobile screens (e.g. Galaxy S21 FE) */
+@media (max-width: 480px) {
+  html.font-size-small {
+    font-size: 12px !important;
+  }
+  html.font-size-medium {
+    font-size: 13.5px !important;
+  }
+  html.font-size-large {
+    font-size: 15px !important;
+  }
+}
+
+body {
+  font-family: "Poppins", sans-serif;
+  background-color: var(--bg-main);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+  transition: background-color var(--transition-speed), color var(--transition-speed);
+}
+
+/* Bounded wrapper layout for mobile dashboard feel on wider screens */
+.wrapper {
+  max-width: 600px;
+  margin: 0 auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background-color: var(--bg-main);
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
+  padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
+}
+
+body.dark-mode .wrapper {
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Base Card Styles */
+.card {
+  background-color: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: var(--radius-card) !important;
+  box-shadow: var(--shadow-sm) !important;
+  transition: transform 0.15s ease, box-shadow var(--transition-speed) ease;
+}
+
+.card:active {
+  transform: scale(0.98);
+}
+
+/* Card Header Overrides */
+.card-header {
+  background-color: var(--bg-card) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  border-top-left-radius: var(--radius-card) !important;
+  border-top-right-radius: var(--radius-card) !important;
+  padding: 1rem 1.25rem !important;
+}
+
+/* List/Record Cards */
+.record-card {
+  padding: 1rem;
+  border-radius: var(--radius-card);
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.record-card:active {
+  background-color: var(--primary-light);
+}
+
+/* Actions cards */
+.action-btn-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  border-radius: var(--radius-card);
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  text-align: center;
+  cursor: pointer;
+  height: 90px;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.15s ease, background-color var(--transition-speed) ease;
+}
+
+.action-btn-card:active {
+  transform: scale(0.95);
+  background-color: var(--primary-light);
+}
+
+/* Compact Top Header Bar - always black/dark for readability */
+.top-navbar {
+  background: #111827 !important; /* Dark black bg */
+  color: #ffffff !important;
+  padding-top: calc(0.75rem + env(safe-area-inset-top, 0px)) !important;
+}
+
+/* Mobile Fixed Bottom Navigation Bar */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 600px;
+  height: calc(64px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background-color: var(--bg-card);
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  z-index: 1000;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.nav-tab-btn {
+  border: none !important;
+  background: none !important;
+  color: var(--text-secondary) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 0.65rem !important;
+  text-decoration: none !important;
+  font-weight: 500 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  transition: color 0.2s ease;
+  width: 20% !important;
+  height: 100% !important;
+}
+
+.nav-tab-btn i {
+  font-size: 1.25rem !important;
+  margin-bottom: 2px !important;
+}
+
+.nav-tab-btn.active {
+  color: var(--primary-color) !important;
+}
+
+.nav-tab-btn span {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  max-width: 100% !important;
+}
+
+/* Floating Action Button (FAB) for scanning */
+.scan-tab-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 50% !important;
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%) !important;
+  border: none !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3) !important;
+  transform: translateY(-16px);
+  z-index: 1010;
+  transition: transform 0.15s ease, box-shadow var(--transition-speed);
+}
+
+.scan-tab-btn:active {
+  transform: translateY(-12px) scale(0.95);
+  box-shadow: 0 2px 6px rgba(13, 110, 253, 0.2) !important;
+}
+
+/* Typography elements */
+.h4, h4 {
+  font-weight: 600;
+}
+
+.text-primary-color {
+  color: var(--primary-color);
+}
+
+/* Touch targets and buttons */
+.btn {
+  padding: 0.65rem 1.25rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-radius: var(--radius-pill);
+  min-height: 44px; /* Touch target minimum guideline */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.btn-success {
+  background-color: var(--success-color) !important;
+  border-color: var(--success-color) !important;
+  color: #fff !important;
+}
+
+.btn-danger {
+  background-color: var(--danger-color) !important;
+  border-color: var(--danger-color) !important;
+  color: #fff !important;
+}
+
+.btn-info {
+  background-color: var(--primary-color) !important;
+  border-color: var(--primary-color) !important;
+  color: #fff !important;
+}
+
+/* Form Controls */
+.form-control, .form-select {
+  border-radius: 12px !important;
+  padding: 0.75rem 1rem !important;
+  font-size: 0.95rem !important;
+  min-height: 48px !important;
+  background-color: var(--bg-main) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-color) !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-control:focus, .form-select:focus {
+  border-color: var(--primary-color) !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
+  background-color: var(--bg-card) !important;
+}
+
+.form-label {
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+  color: var(--text-secondary) !important;
+  margin-bottom: 0.4rem !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.form-section-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--primary-color);
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.35rem;
+}
+
+/* Auto calculated fields styling */
+.form-control-readonly {
+  background-color: var(--primary-light) !important;
+  color: var(--primary-color) !important;
+  font-weight: 600 !important;
+}
+
+/* Dashboard Summary Cards */
+.dash-metric-num {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+/* Finance indicators */
+.amount-plus {
+  color: var(--success-color) !important;
+}
+
+.amount-minus {
+  color: var(--danger-color) !important;
+}
+
+/* Modal layout tweaks for mobile */
+.modal-content {
+  background-color: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+  border: none !important;
+  border-radius: var(--radius-card) !important;
+}
+
+/* Full Screen Camera Styles */
+.camera-fullscreen-dialog {
+  max-width: 100%;
+  height: 100vh;
+  margin: 0;
+}
+
+.camera-fullscreen-dialog .modal-content {
+  height: 100%;
+  border-radius: 0 !important;
+}
+
+.camera-preview-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background-color: #000;
+}
+
+.camera-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.receipt-scan-guide {
+  position: absolute;
+  top: 15%;
+  left: 8%;
+  right: 8%;
+  bottom: 25%;
+  border: 3px dashed var(--primary-color);
+  border-radius: 12px;
+  pointer-events: none;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.4);
+}
+
+.receipt-scan-guide-text {
+  color: #fff;
+  background-color: rgba(0, 0, 0, 0.7);
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+  position: absolute;
+  bottom: -48px;
+  width: 90%;
+  left: 5%;
+}
+
+.captured-image-preview {
+  width: 100%;
+  max-height: 400px;
+  object-fit: contain;
+  border-radius: var(--radius-card);
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-main);
+}
+
+.ocr-loading-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.5rem;
+  text-align: center;
+}
+
+/* Reviews indicators */
+.field-scanned-success {
+  border: 1.5px solid var(--success-color) !important;
+  background-color: rgba(16, 185, 129, 0.05) !important;
+}
+
+.field-scanned-warning {
+  border: 1.5px solid var(--warning-color) !important;
+  background-color: rgba(245, 158, 11, 0.05) !important;
+}
+
+/* Bottom Sheet simulated layout */
+.bottom-sheet-dialog {
+  margin: 0 auto;
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  right: auto;
+  transform: translate(-50%, 100%) !important;
+  width: 100%;
+  max-width: 600px;
+  transition: transform var(--transition-speed) ease-out;
+}
+
+.bottom-sheet-dialog.show {
+  transform: translate(-50%, 0) !important;
+}
+
+.bottom-sheet-content {
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  border-top-left-radius: var(--radius-card) !important;
+  border-top-right-radius: var(--radius-card) !important;
+  padding-bottom: calc(30px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+/* Dark Mode Overrides for standard Bootstrap styles */
+body.dark-mode .text-dark {
+  color: var(--text-primary) !important;
+}
+
+body.dark-mode .bg-white {
+  background-color: var(--bg-card) !important;
+}
+
+body.dark-mode .bg-light {
+  background-color: var(--bg-main) !important;
+}
+
+body.dark-mode .table-light {
+  background-color: var(--primary-light) !important;
+  color: var(--text-primary) !important;
+}
+
+body.dark-mode .btn-close {
+  filter: invert(1) grayscale(1) brightness(2);
+}
+
+/* Alerts custom styles */
+.alert-success {
+  background-color: rgba(16, 185, 129, 0.1) !important;
+  border-color: rgba(16, 185, 129, 0.15) !important;
+  color: var(--success-color) !important;
+}
+
+.alert-danger {
+  background-color: rgba(239, 68, 68, 0.1) !important;
+  border-color: rgba(239, 68, 68, 0.15) !important;
+  color: var(--danger-color) !important;
+}
+
+.alert-warning {
+  background-color: rgba(245, 158, 11, 0.1) !important;
+  border-color: rgba(245, 158, 11, 0.15) !important;
+  color: var(--warning-color) !important;
+}
+
+/* Sticky Bottom Form Bar -> Now Static for better Mobile Keyboard UX */
+.sticky-form-footer {
+  position: relative;
+  margin-top: 1.5rem;
+  padding: 0.5rem 0;
+  z-index: 1;
+}
+
+/* Mobile period selector tabs */
+.period-tab-container {
+  display: flex;
+  background-color: var(--bg-main);
+  border-radius: var(--radius-pill);
+  padding: 0.25rem;
+  margin-bottom: 1rem;
+  border: 1px solid var(--border-color);
+}
+
+.period-tab-btn {
+  flex: 1;
+  border: none;
+  background: none;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-radius: var(--radius-pill);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  min-width: 75px;
+}
+
+.period-tab-btn.active {
+  background-color: var(--bg-card);
+  color: var(--primary-color);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Spinner Backdrop */
+.spinner-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ==========================================================================
+   Premium Dark Mode Redesign Custom Overrides
+   ========================================================================== */
+
+/* Smooth Transitions */
+body, 
+.card, 
+.record-card, 
+.action-btn-card, 
+.form-control, 
+.form-select, 
+.bottom-nav, 
+.list-group-item, 
+.top-navbar, 
+.nav-tab-btn,
+.scan-tab-btn {
+  transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, transform 0.15s ease !important;
+}
+
+/* Headings Contrast */
+body.dark-mode h1,
+body.dark-mode h2,
+body.dark-mode h3,
+body.dark-mode h4,
+body.dark-mode h5,
+body.dark-mode h6,
+body.dark-mode .h1,
+body.dark-mode .h2,
+body.dark-mode .h3,
+body.dark-mode .h4,
+body.dark-mode .fw-bold,
+body.dark-mode strong {
+  color: #E5E7EB !important;
+}
+
+/* Version text readability */
+body.dark-mode .text-muted {
+  color: #9CA3AF !important;
+}
+
+/* Inactive Nav tabs */
+body.dark-mode .nav-tab-btn {
+  color: #9CA3AF !important;
+}
+
+/* Active Nav tab */
+body.dark-mode .nav-tab-btn.active {
+  color: #5B9CFF !important;
+}
+
+/* Center scan button */
+body.dark-mode .scan-tab-btn {
+  background: linear-gradient(135deg, #5B9CFF 0%, #3b82f6 100%) !important;
+  box-shadow: 0 4px 12px rgba(91, 156, 255, 0.25) !important;
+}
+
+body.dark-mode .scan-tab-btn:active {
+  box-shadow: 0 2px 6px rgba(91, 156, 255, 0.15) !important;
+}
+
+/* Inputs and Forms */
+body.dark-mode .form-control,
+body.dark-mode .form-select {
+  background-color: #202B3B !important;
+  border-color: #334155 !important;
+  color: #CBD5E1 !important;
+}
+
+body.dark-mode .form-control:focus,
+body.dark-mode .form-select:focus {
+  background-color: #202B3B !important;
+  border-color: #5B9CFF !important;
+  box-shadow: 0 0 0 3px rgba(91, 156, 255, 0.15) !important;
+}
+
+body.dark-mode .form-control-readonly {
+  background-color: #1E3A5F !important;
+  color: #5B9CFF !important;
+}
+
+/* Top Navigation Bar Header */
+body.dark-mode .top-navbar {
+  background: #161F2D !important;
+  border-bottom: 1px solid #334155 !important;
+}
+
+/* Bottom Navigation Bar */
+body.dark-mode .bottom-nav {
+  background-color: #1B2433 !important;
+  border-top: 1px solid #334155 !important;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Sticky Form Footer */
+body.dark-mode .sticky-form-footer {
+  background-color: transparent !important;
+  border-top: none !important;
+  box-shadow: none !important;
+}
+
+/* List group / Menu item card styling to remove bright white cards */
+body.dark-mode .list-group-item {
+  background-color: #202B3B !important;
+  border: 1px solid #334155 !important;
+  color: #E5E7EB !important;
+}
+
+body.dark-mode .list-group-item-action:hover,
+body.dark-mode .list-group-item-action:active {
+  background-color: #273449 !important;
+  color: #E5E7EB !important;
+}
+
+/* Menu card bg light overrides */
+body.dark-mode .more-menu-controller .list-group-item.bg-light {
+  background-color: #1B2433 !important;
+  border: 1px solid #334155 !important;
+}
+
+body.dark-mode .more-menu-controller .list-group-item.bg-light .text-dark {
+  color: #E5E7EB !important;
+}
+
+/* Switch styling checked */
+body.dark-mode .form-check-input:checked {
+  background-color: #5B9CFF !important;
+  border-color: #5B9CFF !important;
+}
+
+/* Record cards list items and recent items */
+body.dark-mode .record-card {
+  background-color: #202B3B !important;
+  border-color: #334155 !important;
+}
+
+body.dark-mode .record-card:active {
+  background-color: #273449 !important;
+}
+
+/* Quick Action button cards */
+body.dark-mode .action-btn-card {
+  background-color: #202B3B !important;
+  border-color: #334155 !important;
+}
+
+body.dark-mode .action-btn-card:active {
+  background-color: #273449 !important;
+}
+
+/* Modal Content and sheets */
+body.dark-mode .modal-content,
+body.dark-mode .bottom-sheet-content {
+  background-color: #1B2433 !important;
+  border: 1px solid #334155 !important;
+}
+
+body.dark-mode .modal-header,
+body.dark-mode .modal-footer {
+  background-color: #1B2433 !important;
+  border-color: #334155 !important;
+}
+
+body.dark-mode .modal-body {
+  background-color: #1B2433 !important;
+}
+
+/* Receipt Camera overlay custom tweaks (remove pure black) */
+body.dark-mode .bg-black {
+  background-color: #121826 !important;
+}
+
+body.dark-mode .ocr-loading-overlay {
+  background-color: #121826 !important;
+}
+
+body.dark-mode .captured-image-preview {
+  background-color: #1B2433 !important;
+  border-color: #334155 !important;
+}
+
+/* Input Placeholder colors in Dark Mode */
+body.dark-mode input::placeholder,
+body.dark-mode textarea::placeholder,
+body.dark-mode .form-control::placeholder {
+  color: #64748B !important;
+  opacity: 1 !important; /* Overrides default browser opacity fade */
+}

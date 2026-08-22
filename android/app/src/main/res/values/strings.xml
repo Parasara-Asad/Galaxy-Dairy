@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Galaxy Dairy</string>
+    <string name="title_activity_main">Galaxy Dairy</string>
+    <string name="package_name">com.galaxydairy.app</string>
+    <string name="custom_url_scheme">com.galaxydairy.app</string>
+</resources>
