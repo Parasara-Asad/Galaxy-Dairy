@@ -555,238 +555,42 @@ function App() {
   const parseReceiptText = (text) => {
     let litreQty = "";
     let fatPercentage = "";
-    let snfValue = "";
     let ratePerLitre = "";
-    let totalAmount = "";
-    let fatRate = "";
 
-    // 1. Extract Milk Quantity (liters)
-    const litreRegexes = [
-      /(?:milk\s*qty|quantity|volume|litre|liter|qty|vol|ltrs?|weight|wt)\s*[:\-]?\s*(\d+(?:\.\d+)?)/i,
-      /(\d+(?:\.\d+)?)\s*(?:l|ltrs?|litres?|liters?)\b/i,
-    ];
-    for (const r of litreRegexes) {
-      const match = text.match(r);
-      if (match) {
-        litreQty = parseFloat(match[1]).toFixed(2);
-        break;
-      }
+    // 1. Extract Litre / Liter / Litres
+    const litreMatch = text.match(/(?:litre|liter|litres)\s*[:\-]?\s*(\d+(?:\.\d+)?)/i);
+    if (litreMatch) {
+      litreQty = parseFloat(litreMatch[1]).toString();
     }
 
-    // 2. Extract Fat (%)
-    const fatRegexes = [
-      /(?:fat\s*%?|fat\s*percentage)\s*[:\-]?\s*(\d+(?:\.\d+)?)/i,
-      /(\d+(?:\.\d+)?)\s*(?:%|percent)?\s*(?:fat)\b/i,
-      /(\d+(?:\.\d+)?)\s*%\s*(?:fat)\b/i,
-    ];
-    for (const r of fatRegexes) {
-      const match = text.match(r);
-      if (match) {
-        fatPercentage = parseFloat(match[1]).toFixed(1);
-        break;
-      }
-    }
-    // Fallback line search for fat
-    if (!fatPercentage) {
-      const lines = text.split("\n");
-      for (const line of lines) {
-        if (/fat/i.test(line)) {
-          const numMatch = line.match(/(\d+(?:\.\d+)?)/);
-          if (numMatch) {
-            fatPercentage = parseFloat(numMatch[1]).toFixed(1);
-            break;
-          }
-        }
-      }
+    // 2. Extract Fat / FAT
+    const fatMatch = text.match(/(?:fat)\s*%?\s*[:\-]?\s*(\d+(?:\.\d+)?)/i);
+    if (fatMatch) {
+      fatPercentage = parseFloat(fatMatch[1]).toString();
     }
 
-    // 3. Extract SNF (%)
-    const snfRegexes = [
-      /(?:snf|s\.n\.f|solid\s*not\s*fat)\s*[:\-]?\s*(\d+(?:\.\d+)?)/i,
-      /(\d+(?:\.\d+)?)\s*(?:%|percent)?\s*(?:snf)\b/i,
-    ];
-    for (const r of snfRegexes) {
-      const match = text.match(r);
-      if (match) {
-        snfValue = parseFloat(match[1]).toFixed(1);
-        break;
-      }
-    }
-    // Fallback line search for SNF
-    if (!snfValue) {
-      const lines = text.split("\n");
-      for (const line of lines) {
-        if (/snf/i.test(line) || /s\.n\.f/i.test(line)) {
-          const numMatch = line.match(/(\d+(?:\.\d+)?)/);
-          if (numMatch) {
-            snfValue = parseFloat(numMatch[1]).toFixed(1);
-            break;
-          }
-        }
-      }
-    }
-
-    // 4. Extract Rate Per Litre
-    const rateRegexes = [
-      /(?:rate|price|price\/ltr|rate\/ltr|r\/l)\s*[:\-]?\s*(?:rs\.?|rupees|₹)?\s*(\d+(?:\.\d+)?)/i,
-      /(?:rs\.?|rupees|₹)?\s*(\d+(?:\.\d+)?)\s*(?:\/\s*ltr|\/\s*l|per\s*ltr|per\s*l)\b/i,
-    ];
-    for (const r of rateRegexes) {
-      const match = text.match(r);
-      if (match) {
-        ratePerLitre = parseFloat(match[1]).toFixed(2);
-        break;
-      }
-    }
-    // Fallback line search for rate
-    if (!ratePerLitre) {
-      const lines = text.split("\n");
-      for (const line of lines) {
-        if (/rate/i.test(line) || /price/i.test(line)) {
-          const numMatch = line.match(/(?:rs\.?|rupees|₹)?\s*(\d+(?:\.\d+)?)/i);
-          if (numMatch) {
-            ratePerLitre = parseFloat(numMatch[1]).toFixed(2);
-            break;
-          }
-        }
-      }
-    }
-
-    // 5. Extract Total Amount
-    const amountRegexes = [
-      /(?:total\s*amount|total\s*amt|amount|amt|net\s*amount|net\s*amt|total|pay|payment|payable)\s*[:\-]?\s*(?:rs\.?|rupees|₹)?\s*(\d+(?:\.\d+)?)/i,
-    ];
-    for (const r of amountRegexes) {
-      const match = text.match(r);
-      if (match) {
-        totalAmount = parseFloat(match[1]).toFixed(2);
-        break;
-      }
-    }
-    // Fallback line search for total amount
-    if (!totalAmount) {
-      const lines = text.split("\n");
-      for (const line of lines) {
-        if (/amount/i.test(line) || /amt/i.test(line) || /total/i.test(line)) {
-          const numMatch = line.match(/(?:rs\.?|rupees|₹)?\s*(\d+(?:\.\d+)?)/i);
-          if (numMatch) {
-            totalAmount = parseFloat(numMatch[1]).toFixed(2);
-            break;
-          }
-        }
-      }
-    }
-
-    // 6. Extract Fat Rate (if any)
-    const fatRateRegexes = [
-      /(?:fat\s*rate|f\.?\s*rate|f\-rate|rate\s*\/?\s*fat|r\s*\/?\s*fat|fat\s*r|price\s*\/?\s*fat|rate\s*per\s*fat|fat\s*price|fatrate)\s*[:\-]?\s*(?:rs\.?|rupees|₹)?\s*(\d+(?:\.\d+)?)/i,
-    ];
-    for (const r of fatRateRegexes) {
-      const match = text.match(r);
-      if (match) {
-        fatRate = parseFloat(match[1]).toFixed(2);
-        break;
-      }
+    // 3. Extract Rate per Litre
+    const rateMatch = text.match(/(?:rate\s*per\s*litre|rate)\s*[:\-]?\s*(\d+(?:\.\d+)?)/i);
+    if (rateMatch) {
+      ratePerLitre = parseFloat(rateMatch[1]).toString();
     }
 
     // Determine what was explicitly detected from OCR
     const isLitreQtyDetected = litreQty !== "";
     const isFatPercentageDetected = fatPercentage !== "";
-    const isSnfDetected = snfValue !== "";
     const isRateDetected = ratePerLitre !== "";
-    const isAmountDetected = totalAmount !== "";
-    const isFatRateDetected = fatRate !== "";
 
-    // 7. Try to parse Date & Time from receipt text
-    let date = "";
-    let isDateDetected = false;
-    const dateMatch = text.match(/(?:date|dt|collected\s*on)?\s*[:\-]?\s*(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/i) 
-      || text.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
-    
-    if (dateMatch) {
-      let day, month, year;
-      if (dateMatch[3] && (dateMatch[3].length === 4 || dateMatch[3].length === 2)) {
-        day = parseInt(dateMatch[1]);
-        month = parseInt(dateMatch[2]);
-        year = parseInt(dateMatch[3]);
-        if (year < 100) year += 2000;
-      } else if (dateMatch[1]) {
-        year = parseInt(dateMatch[1]);
-        month = parseInt(dateMatch[2]);
-        day = parseInt(dateMatch[3]);
-      }
-      
-      const timeMatch = text.match(/(?:time)?\s*[:\-]?\s*(\d{1,2}):(\d{2})(?::\d{2})?\s*(am|pm)?/i);
-      let hours = 12;
-      let minutes = 0;
-      if (timeMatch) {
-        hours = parseInt(timeMatch[1]);
-        minutes = parseInt(timeMatch[2]);
-        const ampm = timeMatch[3];
-        if (ampm) {
-          if (ampm.toLowerCase() === "pm" && hours < 12) hours += 12;
-          if (ampm.toLowerCase() === "am" && hours === 12) hours = 0;
-        }
-      }
-      
-      try {
-        const dObj = new Date(year, month - 1, day, hours, minutes);
-        if (!isNaN(dObj.getTime())) {
-          dObj.setMinutes(dObj.getMinutes() - dObj.getTimezoneOffset());
-          date = dObj.toISOString().slice(0, 16);
-          isDateDetected = true;
-        }
-      } catch (e) {
-        console.warn("Failed to parse matched date/time", e);
-      }
-    }
+    // We generate standard default fields for non-scanned structural fields
+    // so the review modal and database integration can work correctly, but we never scan/extract them.
+    const timestamp = Date.now().toString().slice(-4);
+    const count = (records.length + 1).toString().padStart(3, "0");
+    const receiptNo = `RC-${timestamp}${count}`;
 
-    if (!date) {
-      const now = new Date();
-      now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-      date = now.toISOString().slice(0, 16);
-    }
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    const date = now.toISOString().slice(0, 16);
 
-    // 8. Try to parse Farmer Name
-    let farmerName = "";
-    let isFarmerNameDetected = false;
-    const farmerNameRegex = /(?:farmer|name|member|customer|client|m\.?\s*name)\s*[:\-]?\s*([a-z0-9\s]+)/i;
-    const farmerMatch = text.match(farmerNameRegex);
-    if (farmerMatch) {
-      farmerName = farmerMatch[1].trim();
-      isFarmerNameDetected = true;
-    } else {
-      farmerName = "Parasara Zahid";
-    }
-
-    // 9. Try to parse Receipt No
-    let receiptNo = "";
-    let isReceiptNoDetected = false;
-    const receiptNoRegex = /(?:receipt\s*(?:no|num|#)?|rcpt\s*(?:no|num|#)?|rc\s*(?:no|num|#)?|bill\s*(?:no|num|#)?|id)\s*[:\-]?\s*([a-z0-9\-]+)/i;
-    const receiptMatch = text.match(receiptNoRegex);
-    if (receiptMatch) {
-      receiptNo = receiptMatch[1].trim();
-      isReceiptNoDetected = true;
-    } else {
-      const timestamp = Date.now().toString().slice(-4);
-      const count = (records.length + 1).toString().padStart(3, "0");
-      receiptNo = `RC-${timestamp}${count}`;
-    }
-
-    // 10. Fallback calculations if not explicitly detected
-    if (!snfValue && isFatPercentageDetected) {
-      snfValue = (parseFloat(fatPercentage) * 0.4 + 7.0).toFixed(1);
-    }
-    if (!ratePerLitre && isFatPercentageDetected) {
-      if (isFatRateDetected) {
-        ratePerLitre = (parseFloat(fatPercentage) * parseFloat(fatRate)).toFixed(2);
-      } else {
-        ratePerLitre = calculateRate(fatPercentage).toFixed(2);
-      }
-    }
-    if (!totalAmount && isLitreQtyDetected && ratePerLitre) {
-      totalAmount = (parseFloat(litreQty) * parseFloat(ratePerLitre)).toFixed(2);
-    }
+    const farmerName = "Parasara Zahid";
 
     return {
       data: {
@@ -797,21 +601,21 @@ function App() {
         milkType: "Cow",
         litreQty,
         fatPercentage,
-        snfValue,
+        snfValue: "", // Ignore SNF
         ratePerLitre,
-        totalAmount,
-        fatRate,
+        totalAmount: "", // Ignore Amount
+        fatRate: "",
       },
       found: {
         litreQty: isLitreQtyDetected,
         fatPercentage: isFatPercentageDetected,
-        snfValue: isSnfDetected || isFatPercentageDetected,
-        ratePerLitre: isRateDetected || isFatPercentageDetected,
-        totalAmount: isAmountDetected || (isLitreQtyDetected && (isRateDetected || isFatPercentageDetected)),
-        fatRate: isFatRateDetected,
-        receiptNo: isReceiptNoDetected,
-        date: isDateDetected,
-        farmerName: isFarmerNameDetected,
+        ratePerLitre: isRateDetected,
+        snfValue: false,
+        totalAmount: false,
+        fatRate: false,
+        receiptNo: false,
+        date: false,
+        farmerName: false,
       },
     };
   };
