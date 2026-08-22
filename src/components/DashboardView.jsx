@@ -34,7 +34,7 @@ function DashboardView({ records, setCurrentTab, openScanModal }) {
     <div className="dashboard-mobile">
       {/* Welcome Banner */}
       <div className="mb-4 text-dark">
-        <h4 className="fw-bold mb-0">Hello, everyone Asad</h4>
+        <h4 className="fw-bold mb-0">Hello, everyone</h4>
         <p className="text-muted small">Here is today's cooperative collection summary.</p>
       </div>
 
