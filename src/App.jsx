@@ -95,7 +95,6 @@ function App() {
         milkType: "Cow",
         litreQty: 10.0,
         fatPercentage: 4.5,
-        snfValue: 8.8,
         ratePerLitre: 45.0,
         totalAmount: 450.0,
         remarks: "Regular daily entry",
@@ -208,7 +207,6 @@ function App() {
     milkType: "Cow",
     litreQty: "",
     fatPercentage: "",
-    snfValue: "",
     ratePerLitre: "",
     totalAmount: "",
     fatRate: "",
@@ -633,7 +631,6 @@ function App() {
         milkType: "Cow",
         litreQty,
         fatPercentage,
-        snfValue: "", // Ignore SNF
         ratePerLitre,
         totalAmount: "", // Ignore Amount
         fatRate: "",
@@ -642,7 +639,6 @@ function App() {
         litreQty: isLitreQtyDetected,
         fatPercentage: isFatPercentageDetected,
         ratePerLitre: isRateDetected,
-        snfValue: false,
         totalAmount: false,
         fatRate: false,
         receiptNo: false,
@@ -1222,10 +1218,6 @@ function App() {
                             setScannedData({
                               ...scannedData,
                               fatPercentage: val,
-                              snfValue:
-                                f > 0
-                                  ? (f * 0.4 + 7.0).toFixed(1)
-                                  : "",
                               ratePerLitre:
                                 r > 0 ? r.toFixed(2) : "",
                               totalAmount:
@@ -1498,7 +1490,6 @@ function App() {
                     localStorage.removeItem("mcms_records");
                     localStorage.removeItem("mcms_income_records");
                     localStorage.removeItem("mcms_expense_records");
-                    localStorage.removeItem("last_entered_snf");
                     triggerToast("All application data has been successfully deleted.", "danger");
                     setShowResetModal(false);
                   }}

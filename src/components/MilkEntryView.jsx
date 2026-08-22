@@ -62,7 +62,6 @@ function MilkEntryView({
   const [villageName, setVillageName] = useState('Sindhavadar');
   const [litreQty, setLitreQty] = useState('');
   const [fatPercentage, setFatPercentage] = useState('');
-  const [snfValue, setSnfValue] = useState('');
   const [ratePerLitre, setRatePerLitre] = useState('');
   const [entryRemarks, setEntryRemarks] = useState('');
 
@@ -78,7 +77,6 @@ function MilkEntryView({
       setVillageName(editingRecord.villageName || 'Sindhavadar');
       setLitreQty(editingRecord.litreQty.toString());
       setFatPercentage(editingRecord.fatPercentage.toString());
-      setSnfValue(editingRecord.snfValue ? editingRecord.snfValue.toString() : '');
       setRatePerLitre(editingRecord.ratePerLitre ? editingRecord.ratePerLitre.toString() : '');
       setEntryRemarks(editingRecord.remarks || '');
     } else {
@@ -98,7 +96,6 @@ function MilkEntryView({
       setVillageName('Sindhavadar');
       setLitreQty(prefillRecord.litreQty || '');
       setFatPercentage(prefillRecord.fatPercentage || '');
-      setSnfValue(prefillRecord.snfValue || '');
       setRatePerLitre(prefillRecord.ratePerLitre || '');
       setEntryRemarks('Scanned via Receipt OCR');
       onClearPrefill(); // Clear from App state
@@ -127,26 +124,18 @@ function MilkEntryView({
     setVillageName('Sindhavdar');
     setLitreQty('');
     setFatPercentage('');
-    setSnfValue('');
     setRatePerLitre('');
     setEntryRemarks('');
     setEditingRecord(null);
   };
 
-  // Fat change handler: auto calculates SNF and Rate Per Litre
+  // Fat change handler: auto calculates Rate Per Litre
   const handleFatChange = (val) => {
     setFatPercentage(val);
     const f = parseFloat(val) || 0;
     if (f > 0) {
-      const savedSnf = localStorage.getItem('last_entered_snf');
-      if (savedSnf) {
-        setSnfValue(savedSnf);
-      } else {
-        setSnfValue((f * 0.4 + 7.0).toFixed(1));
-      }
       setRatePerLitre(calculateRate(f).toString());
     } else {
-      setSnfValue('');
       setRatePerLitre('');
     }
   };
@@ -154,7 +143,6 @@ function MilkEntryView({
   // Perform Calculations dynamically
   const fatVal = parseFloat(fatPercentage) || 0;
   const litreVal = parseFloat(litreQty) || 0;
-  const snfVal = parseFloat(snfValue) || 0;
   const rateVal = parseFloat(ratePerLitre) || 0;
   const totalAmount = rateVal * litreVal;
 
@@ -184,7 +172,6 @@ function MilkEntryView({
         villageName: villageName.trim(),
         litreQty: litreVal,
         fatPercentage: fatVal,
-        snfValue: snfVal || (fatVal * 0.4 + 7.0),
         ratePerLitre: rateVal,
         totalAmount: totalAmount,
         remarks: entryRemarks.trim(),
@@ -363,26 +350,6 @@ function MilkEntryView({
                 onChange={(e) => handleFatChange(e.target.value)}
                 inputMode="decimal"
                 required
-              />
-            </div>
-            <div className="col-6">
-              <label className="form-label">SNF (%)</label>
-              <input
-                type="tel"
-                step="0.1"
-                className="form-control"
-                value={snfValue}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setSnfValue(val);
-                  if (val.trim() === '') {
-                    localStorage.removeItem('last_entered_snf');
-                  } else {
-                    localStorage.setItem('last_entered_snf', val);
-                  }
-                }}
-                placeholder="Auto"
-                inputMode="decimal"
               />
             </div>
             <div className="col-6">

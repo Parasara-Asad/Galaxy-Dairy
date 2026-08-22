@@ -60,7 +60,6 @@ function RecordsView({ records, onEditRecord, onDeleteRecord, triggerToast }) {
       "Village",
       "Quantity (Litre)",
       "Fat (%)",
-      "SNF (%)",
       "Rate Per Litre (₹)",
       "Total Amount (₹)",
       "Remarks"
@@ -76,7 +75,6 @@ function RecordsView({ records, onEditRecord, onDeleteRecord, triggerToast }) {
       r.villageName || '',
       r.litreQty,
       r.fatPercentage,
-      r.snfValue || '',
       r.ratePerLitre,
       r.totalAmount,
       r.remarks || ''
@@ -278,17 +276,13 @@ function RecordsView({ records, onEditRecord, onDeleteRecord, triggerToast }) {
 
                 <div className="card border p-3 mb-3">
                   <div className="row g-2 text-dark">
-                    <div className="col-4">
+                    <div className="col-6">
                       <span className="small text-muted d-block">Quantity</span>
                       <strong className="fs-6">{selectedRecord.litreQty.toFixed(2)} L</strong>
                     </div>
-                    <div className="col-4">
+                    <div className="col-6">
                       <span className="small text-muted d-block">Fat %</span>
                       <strong className="fs-6">{selectedRecord.fatPercentage.toFixed(1)}%</strong>
-                    </div>
-                    <div className="col-4">
-                      <span className="small text-muted d-block">SNF %</span>
-                      <strong className="fs-6">{selectedRecord.snfValue ? selectedRecord.snfValue.toFixed(1) : '8.5'}%</strong>
                     </div>
                     <div className="col-6 mt-2">
                       <span className="small text-muted d-block">Rate/Litre</span>

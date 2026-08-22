@@ -207,17 +207,13 @@ function DashboardView({ records, setCurrentTab, openScanModal }) {
 
                 <div className="card border p-3 mb-3">
                   <div className="row g-2 text-dark">
-                    <div className="col-4">
+                    <div className="col-6">
                       <span className="small text-muted d-block">Quantity</span>
                       <strong className="fs-6">{selectedRecord.litreQty.toFixed(2)} L</strong>
                     </div>
-                    <div className="col-4">
+                    <div className="col-6">
                       <span className="small text-muted d-block">Fat %</span>
                       <strong className="fs-6">{selectedRecord.fatPercentage.toFixed(1)}%</strong>
-                    </div>
-                    <div className="col-4">
-                      <span className="small text-muted d-block">SNF %</span>
-                      <strong className="fs-6">{selectedRecord.snfValue ? selectedRecord.snfValue.toFixed(1) : '8.5'}%</strong>
                     </div>
                     <div className="col-6 mt-2">
                       <span className="small text-muted d-block">Rate/Litre</span>
