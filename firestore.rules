@@ -19,10 +19,12 @@ service cloud.firestore {
       allow update, delete: if request.auth != null && request.auth.uid == resource.data.uid;
     }
 
-    // User-specific milk collection records (when synced to Firestore in future):
+    // User-specific milk collection records
     match /records/{recordId} {
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update: if request.auth != null && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
   }
 }

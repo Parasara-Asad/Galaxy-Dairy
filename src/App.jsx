@@ -6,6 +6,16 @@ import ProfitLossView from "./components/ProfitLossView";
 import IncomeOutcomeView from "./components/IncomeOutcomeView";
 import ThemeSelectorModal from "./components/ThemeSelectorModal";
 import { useAuth } from "./context/useAuth";
+import {
+  getCachedRecords,
+  setCachedRecords,
+  subscribeToMilkRecords,
+  saveMilkRecord,
+  updateMilkRecord,
+  deleteMilkRecord,
+  flushPendingSyncQueue,
+  migrateGuestRecordsIfAny,
+} from "./services/recordsSyncService";
 
 const THEME_LABELS = {
   light: "Light Mode",
@@ -47,28 +57,7 @@ function App() {
 
   // --- Core States ---
   const [records, setRecords] = useState(() => {
-    const stored = localStorage.getItem("mcms_records");
-    if (stored) return JSON.parse(stored);
-
-    const defaults = [
-      {
-        id: "REC_1001",
-        receiptNo: "RC-1001",
-        date: new Date().toISOString().slice(0, 16),
-        farmerName: "Parasara Zahid",
-        mobileNumber: "9879400931",
-        villageName: "Sindhavdar",
-        milkShift: "Morning",
-        milkType: "Cow",
-        litreQty: 10.0,
-        fatPercentage: 4.5,
-        ratePerLitre: 45.0,
-        totalAmount: 450.0,
-        remarks: "Regular daily entry",
-      },
-    ];
-    localStorage.setItem("mcms_records", JSON.stringify(defaults));
-    return defaults;
+    return getCachedRecords(null);
   });
 
   const [incomeRecords, setIncomeRecords] = useState(() => {
@@ -231,10 +220,59 @@ function App() {
     }
   }, [currentUser]);
 
-  // Sync states to local storage
+  // Multi-device real-time data synchronization for milk records
   useEffect(() => {
-    localStorage.setItem("mcms_records", JSON.stringify(records));
-  }, [records]);
+    const userId = currentUser?.uid || null;
+
+    // Load instantly from cached storage
+    const cached = getCachedRecords(userId);
+    setRecords(cached);
+
+    if (userId) {
+      // Migrate previous guest records if existing
+      migrateGuestRecordsIfAny(userId).catch(() => {});
+
+      // Subscribe to real-time updates across all logged-in devices
+      const unsubscribe = subscribeToMilkRecords(
+        userId,
+        (syncedRecords) => {
+          setRecords(syncedRecords);
+        },
+        (syncErr) => {
+          console.warn("Real-time sync notice:", syncErr?.message || syncErr);
+        }
+      );
+
+      // Auto-flush pending queue on network reconnect or window focus
+      const handleReconnectOrFocus = () => {
+        if (navigator.onLine) {
+          flushPendingSyncQueue(userId).catch(() => {});
+        }
+      };
+
+      window.addEventListener("online", handleReconnectOrFocus);
+      window.addEventListener("focus", handleReconnectOrFocus);
+
+      // Periodic automatic refresh every 20 seconds
+      const intervalId = setInterval(() => {
+        if (navigator.onLine) {
+          flushPendingSyncQueue(userId).catch(() => {});
+        }
+      }, 20000);
+
+      return () => {
+        unsubscribe();
+        window.removeEventListener("online", handleReconnectOrFocus);
+        window.removeEventListener("focus", handleReconnectOrFocus);
+        clearInterval(intervalId);
+      };
+    }
+  }, [currentUser]);
+
+  // Sync state to local storage cache for the active account
+  useEffect(() => {
+    setCachedRecords(currentUser?.uid || null, records);
+  }, [records, currentUser]);
 
   useEffect(() => {
     localStorage.setItem("mcms_income_records", JSON.stringify(incomeRecords));
@@ -322,28 +360,55 @@ function App() {
     checkUpdates();
   }, []);
 
-  // --- Milk Record Handlers ---
-  const handleSaveRecord = (recordData) => {
-    const record = {
-      id: "REC_" + Date.now(),
-      userId: currentUser?.uid || "guest",
+  // --- Milk Record Handlers (Real-time and Offline-supported) ---
+  const handleSaveRecord = async (recordData) => {
+    const userId = currentUser?.uid || null;
+    const recordId =
+      recordData.id || `REC_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    const optimisticRecord = {
       ...recordData,
+      id: recordId,
+      userId: userId || "guest",
+      createdAt: recordData.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
-    setRecords((prev) => [record, ...prev]);
+
+    setRecords((prev) => [optimisticRecord, ...prev.filter((r) => r.id !== recordId)]);
     triggerToast("Record saved successfully!", "success");
+
+    try {
+      await saveMilkRecord(optimisticRecord, userId);
+    } catch (saveErr) {
+      console.warn("Background save error:", saveErr);
+    }
   };
 
-  const handleUpdateRecord = (id, recordData) => {
+  const handleUpdateRecord = async (id, recordData) => {
+    const userId = currentUser?.uid || null;
+    const nowIso = new Date().toISOString();
     setRecords((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, ...recordData } : r)),
+      prev.map((r) => (r.id === id ? { ...r, ...recordData, updatedAt: nowIso } : r))
     );
     setEditingRecord(null);
     triggerToast("Record updated successfully!", "success");
+
+    try {
+      await updateMilkRecord(id, recordData, userId);
+    } catch (updateErr) {
+      console.warn("Background update error:", updateErr);
+    }
   };
 
-  const handleDeleteRecord = (id) => {
+  const handleDeleteRecord = async (id) => {
+    const userId = currentUser?.uid || null;
     setRecords((prev) => prev.filter((r) => r.id !== id));
     triggerToast("Record deleted.", "danger");
+
+    try {
+      await deleteMilkRecord(id, userId);
+    } catch (deleteErr) {
+      console.warn("Background delete error:", deleteErr);
+    }
   };
 
 

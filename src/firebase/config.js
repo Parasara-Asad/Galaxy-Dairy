@@ -1,6 +1,11 @@
 import { initializeApp, getApps } from "firebase/app";
 import { getAuth, GoogleAuthProvider, browserLocalPersistence, setPersistence } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import {
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+  getFirestore,
+} from "firebase/firestore";
 
 const cleanEnv = (val) => {
   if (!val) return "";
@@ -8,12 +13,12 @@ const cleanEnv = (val) => {
 };
 
 const firebaseConfig = {
-  apiKey: cleanEnv(import.meta.env.VITE_FIREBASE_API_KEY) || "AIzaSyCsmFeswGk1X6Jr7eUmI_bRpjQ7yxLh7Ig",
-  authDomain: cleanEnv(import.meta.env.VITE_FIREBASE_AUTH_DOMAIN) || "galaxy-dairy-befd9.firebaseapp.com",
-  projectId: cleanEnv(import.meta.env.VITE_FIREBASE_PROJECT_ID) || "galaxy-dairy-befd9",
-  storageBucket: cleanEnv(import.meta.env.VITE_FIREBASE_STORAGE_BUCKET) || "galaxy-dairy-befd9.firebasestorage.app",
-  messagingSenderId: cleanEnv(import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID) || "457646599625",
-  appId: cleanEnv(import.meta.env.VITE_FIREBASE_APP_ID) || "1:457646599625:web:c778935a7d173d82ca8c18",
+  apiKey: cleanEnv(import.meta.env?.VITE_FIREBASE_API_KEY) || "AIzaSyCsmFeswGk1X6Jr7eUmI_bRpjQ7yxLh7Ig",
+  authDomain: cleanEnv(import.meta.env?.VITE_FIREBASE_AUTH_DOMAIN) || "galaxy-dairy-befd9.firebaseapp.com",
+  projectId: cleanEnv(import.meta.env?.VITE_FIREBASE_PROJECT_ID) || "galaxy-dairy-befd9",
+  storageBucket: cleanEnv(import.meta.env?.VITE_FIREBASE_STORAGE_BUCKET) || "galaxy-dairy-befd9.firebasestorage.app",
+  messagingSenderId: cleanEnv(import.meta.env?.VITE_FIREBASE_MESSAGING_SENDER_ID) || "457646599625",
+  appId: cleanEnv(import.meta.env?.VITE_FIREBASE_APP_ID) || "1:457646599625:web:c778935a7d173d82ca8c18",
 };
 
 // Check if all necessary environment variables are set
@@ -43,9 +48,21 @@ if (isFirebaseConfigured) {
       console.warn("Firebase Auth initialization warning:", authInitError?.message || authInitError);
     }
     try {
-      db = getFirestore(app);
-    } catch (dbInitError) {
-      console.warn("Firestore initialization warning:", dbInitError?.message || dbInitError);
+      db = initializeFirestore(app, {
+        localCache: persistentLocalCache({
+          tabManager: persistentMultipleTabManager(),
+        }),
+      });
+    } catch (cacheInitError) {
+      console.warn(
+        "Firestore persistent cache init warning, using standard Firestore:",
+        cacheInitError?.message || cacheInitError
+      );
+      try {
+        db = getFirestore(app);
+      } catch (dbInitError) {
+        console.warn("Firestore initialization warning:", dbInitError?.message || dbInitError);
+      }
     }
   } catch (error) {
     console.error("Firebase initialization failed:", error);
