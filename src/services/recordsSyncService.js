@@ -11,9 +11,11 @@ import {
 } from "firebase/firestore";
 import { db, isFirebaseConfigured } from "../firebase/config.js";
 
+// --- Default Demo Records for Guest Mode ---
 const DEFAULT_GUEST_RECORDS = [
   {
     id: "REC_1001",
+    recordType: "milk",
     receiptNo: "RC-1001",
     date: new Date().toISOString().slice(0, 16),
     farmerName: "Parasara Zahid",
@@ -29,17 +31,72 @@ const DEFAULT_GUEST_RECORDS = [
   },
 ];
 
+const DEFAULT_GUEST_INCOME = [
+  {
+    id: "INC_1",
+    recordType: "income",
+    date: new Date().toISOString().slice(0, 10),
+    category: "Product Sales",
+    description: "Ghee sales to local distributor",
+    amount: 2500.0,
+  },
+  {
+    id: "INC_2",
+    recordType: "income",
+    date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+    category: "Subsidy",
+    description: "Govt Milk Cooperative Subsidy",
+    amount: 1200.0,
+  },
+];
+
+const DEFAULT_GUEST_EXPENSES = [
+  {
+    id: "EXP_1",
+    recordType: "expense",
+    date: new Date().toISOString().slice(0, 10),
+    category: "Milk Purchase",
+    description: "Milk purchased from farmers",
+    amount: 3500.0,
+  },
+  {
+    id: "EXP_2",
+    recordType: "expense",
+    date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+    category: "Transport",
+    description: "Pickup van refueling",
+    amount: 1100.0,
+  },
+  {
+    id: "EXP_3",
+    recordType: "expense",
+    date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+    category: "Worker Salary",
+    description: "Daily wage payment",
+    amount: 800.0,
+  },
+];
+
+// --- Storage Key Helpers ---
 export const getRecordsStorageKey = (userId) => {
   return userId ? `mcms_records_${userId}` : "mcms_records";
+};
+
+export const getIncomeStorageKey = (userId) => {
+  return userId ? `mcms_income_records_${userId}` : "mcms_income_records";
+};
+
+export const getExpenseStorageKey = (userId) => {
+  return userId ? `mcms_expense_records_${userId}` : "mcms_expense_records";
 };
 
 export const getPendingSyncKey = (userId) => {
   return userId ? `mcms_pending_sync_${userId}` : "mcms_pending_sync_guest";
 };
 
-/**
- * Loads records from local cache for fast initial UI rendering.
- */
+// ==========================================
+// 1. LOCAL CACHE GETTERS & SETTERS
+// ==========================================
 export const getCachedRecords = (userId) => {
   const key = getRecordsStorageKey(userId);
   try {
@@ -49,37 +106,96 @@ export const getCachedRecords = (userId) => {
       if (Array.isArray(parsed)) return parsed;
     }
   } catch (err) {
-    console.warn("Failed to read cached records:", err);
+    console.warn("Failed to read cached milk records:", err);
   }
 
-  // If guest, initialize default demo records
   if (!userId) {
     try {
       localStorage.setItem("mcms_records", JSON.stringify(DEFAULT_GUEST_RECORDS));
     } catch {
-      // ignore storage error
+      // ignore
     }
     return DEFAULT_GUEST_RECORDS;
   }
-
   return [];
 };
 
-/**
- * Saves current records to local cache.
- */
 export const setCachedRecords = (userId, records) => {
   const key = getRecordsStorageKey(userId);
   try {
     localStorage.setItem(key, JSON.stringify(records));
   } catch (err) {
-    console.warn("Failed to write cached records:", err);
+    console.warn("Failed to write cached milk records:", err);
   }
 };
 
-/**
- * Retrieves the pending offline sync queue from localStorage.
- */
+export const getCachedIncomeRecords = (userId) => {
+  const key = getIncomeStorageKey(userId);
+  try {
+    const stored = localStorage.getItem(key);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (err) {
+    console.warn("Failed to read cached income records:", err);
+  }
+
+  if (!userId) {
+    try {
+      localStorage.setItem("mcms_income_records", JSON.stringify(DEFAULT_GUEST_INCOME));
+    } catch {
+      // ignore
+    }
+    return DEFAULT_GUEST_INCOME;
+  }
+  return [];
+};
+
+export const setCachedIncomeRecords = (userId, records) => {
+  const key = getIncomeStorageKey(userId);
+  try {
+    localStorage.setItem(key, JSON.stringify(records));
+  } catch (err) {
+    console.warn("Failed to write cached income records:", err);
+  }
+};
+
+export const getCachedExpenseRecords = (userId) => {
+  const key = getExpenseStorageKey(userId);
+  try {
+    const stored = localStorage.getItem(key);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (err) {
+    console.warn("Failed to read cached expense records:", err);
+  }
+
+  if (!userId) {
+    try {
+      localStorage.setItem("mcms_expense_records", JSON.stringify(DEFAULT_GUEST_EXPENSES));
+    } catch {
+      // ignore
+    }
+    return DEFAULT_GUEST_EXPENSES;
+  }
+  return [];
+};
+
+export const setCachedExpenseRecords = (userId, records) => {
+  const key = getExpenseStorageKey(userId);
+  try {
+    localStorage.setItem(key, JSON.stringify(records));
+  } catch (err) {
+    console.warn("Failed to write cached expense records:", err);
+  }
+};
+
+// ==========================================
+// 2. OFFLINE SYNC QUEUE OPERATIONS
+// ==========================================
 export const getPendingQueue = (userId) => {
   if (!userId) return [];
   const key = getPendingSyncKey(userId);
@@ -91,15 +207,11 @@ export const getPendingQueue = (userId) => {
   }
 };
 
-/**
- * Appends an operation to the pending offline sync queue.
- */
 export const addToPendingQueue = (userId, operation) => {
   if (!userId) return;
   const key = getPendingSyncKey(userId);
   try {
     const queue = getPendingQueue(userId);
-    // Replace existing operation for same record id if exists
     const filtered = queue.filter((item) => item.id !== operation.id);
     filtered.push(operation);
     localStorage.setItem(key, JSON.stringify(filtered));
@@ -108,9 +220,6 @@ export const addToPendingQueue = (userId, operation) => {
   }
 };
 
-/**
- * Clears an item from the pending sync queue.
- */
 export const removeFromPendingQueue = (userId, recordId) => {
   if (!userId) return;
   const key = getPendingSyncKey(userId);
@@ -123,10 +232,6 @@ export const removeFromPendingQueue = (userId, recordId) => {
   }
 };
 
-/**
- * Flushes pending offline sync operations to Firestore.
- * Prevents overwriting newer server data with older local data.
- */
 export const flushPendingSyncQueue = async (userId) => {
   if (!db || !userId || !navigator.onLine) return;
   const queue = getPendingQueue(userId);
@@ -134,47 +239,53 @@ export const flushPendingSyncQueue = async (userId) => {
 
   for (const op of queue) {
     try {
-      const recordDocRef = doc(db, "records", op.id);
+      const docRef = doc(db, "records", op.id);
       if (op.type === "set") {
-        // Compare with server document to avoid overwriting newer server data
-        const serverSnap = await getDoc(recordDocRef);
+        const serverSnap = await getDoc(docRef);
         if (serverSnap.exists()) {
           const serverData = serverSnap.data();
           const serverUpdatedAt = new Date(serverData.updatedAt || serverData.createdAt || 0).getTime();
           const localUpdatedAt = new Date(op.data.updatedAt || op.data.createdAt || 0).getTime();
           if (serverUpdatedAt > localUpdatedAt) {
-            // Server data is newer; skip overwriting
             removeFromPendingQueue(userId, op.id);
             continue;
           }
         }
-        await setDoc(recordDocRef, op.data, { merge: true });
+        await setDoc(docRef, op.data, { merge: true });
         removeFromPendingQueue(userId, op.id);
       } else if (op.type === "delete") {
-        await deleteDoc(recordDocRef);
+        await deleteDoc(docRef);
         removeFromPendingQueue(userId, op.id);
       }
     } catch (err) {
-      console.warn(`Pending sync error for record ${op.id}:`, err?.message || err);
+      console.warn(`Pending sync error for records/${op.id}:`, err?.message || err);
     }
   }
 };
 
+// ==========================================
+// 3. UNIFIED REAL-TIME DATA SYNCHRONIZATION
+// ==========================================
 /**
- * Real-time subscription to user's milk records in Firestore.
- * Listens to updates from all devices simultaneously.
+ * Single real-time subscription to user's records in Firestore.
+ * Automatically parses, sorts, and delivers milk records, income records, and expense records
+ * to all logged-in devices simultaneously.
  */
-export const subscribeToMilkRecords = (userId, onUpdate, onError) => {
+export const subscribeToAllUserData = (
+  userId,
+  { onMilkUpdate, onIncomeUpdate, onExpenseUpdate },
+  onError
+) => {
   if (!isFirebaseConfigured || !db || !userId) {
-    const cached = getCachedRecords(userId);
-    onUpdate(cached);
+    if (onMilkUpdate) onMilkUpdate(getCachedRecords(userId));
+    if (onIncomeUpdate) onIncomeUpdate(getCachedIncomeRecords(userId));
+    if (onExpenseUpdate) onExpenseUpdate(getCachedExpenseRecords(userId));
     return () => {};
   }
 
-  // First flush any offline pending actions
+  // Flush any pending operations first
   flushPendingSyncQueue(userId).catch(() => {});
 
-  // Query records for this authenticated user
   const recordsQuery = query(
     collection(db, "records"),
     where("userId", "==", userId)
@@ -186,104 +297,100 @@ export const subscribeToMilkRecords = (userId, onUpdate, onError) => {
     recordsQuery,
     { includeMetadataChanges: true },
     (snapshot) => {
-      const serverRecords = [];
+      const milkList = [];
+      const incomeList = [];
+      const expenseList = [];
+
       snapshot.forEach((docSnap) => {
         const data = docSnap.data();
-        serverRecords.push({
-          id: docSnap.id,
-          ...data,
-          // Ensure numeric types match component expectations
-          litreQty: Number(data.litreQty) || 0,
-          fatPercentage: Number(data.fatPercentage) || 0,
-          ratePerLitre: Number(data.ratePerLitre) || 0,
-          totalAmount: Number(data.totalAmount) || 0,
-        });
+        const type = data.recordType;
+
+        if (type === "income") {
+          incomeList.push({
+            id: docSnap.id,
+            ...data,
+            amount: Number(data.amount) || 0,
+          });
+        } else if (type === "expense") {
+          expenseList.push({
+            id: docSnap.id,
+            ...data,
+            amount: Number(data.amount) || 0,
+          });
+        } else {
+          // Default: Milk collection record
+          milkList.push({
+            id: docSnap.id,
+            ...data,
+            litreQty: Number(data.litreQty) || 0,
+            fatPercentage: Number(data.fatPercentage) || 0,
+            ratePerLitre: Number(data.ratePerLitre) || 0,
+            totalAmount: Number(data.totalAmount) || 0,
+          });
+        }
       });
 
-      // Sort records by date / createdAt descending
-      serverRecords.sort((a, b) => {
+      // Sort milk records descending
+      milkList.sort((a, b) => {
         const tA = new Date(a.date || a.createdAt || 0).getTime();
         const tB = new Date(b.date || b.createdAt || 0).getTime();
         return tB - tA;
       });
 
-      // Update local storage cache
-      setCachedRecords(userId, serverRecords);
+      // Sort incomes descending
+      incomeList.sort((a, b) => {
+        const tA = new Date((a.date || "") + "T00:00:00").getTime();
+        const tB = new Date((b.date || "") + "T00:00:00").getTime();
+        if (tB !== tA) return tB - tA;
+        return (new Date(b.createdAt || 0).getTime()) - (new Date(a.createdAt || 0).getTime());
+      });
 
-      // Notify caller
-      onUpdate(serverRecords);
+      // Sort expenses descending
+      expenseList.sort((a, b) => {
+        const tA = new Date((a.date || "") + "T00:00:00").getTime();
+        const tB = new Date((b.date || "") + "T00:00:00").getTime();
+        if (tB !== tA) return tB - tA;
+        return (new Date(b.createdAt || 0).getTime()) - (new Date(a.createdAt || 0).getTime());
+      });
+
+      // Update local storage caches
+      setCachedRecords(userId, milkList);
+      setCachedIncomeRecords(userId, incomeList);
+      setCachedExpenseRecords(userId, expenseList);
+
+      // Dispatch to components
+      if (onMilkUpdate) onMilkUpdate(milkList);
+      if (onIncomeUpdate) onIncomeUpdate(incomeList);
+      if (onExpenseUpdate) onExpenseUpdate(expenseList);
+
       isFirstLoad = false;
     },
     (error) => {
-      console.warn("Real-time milk records subscription warning:", error?.message || error);
+      console.warn("Real-time data subscription notice:", error?.message || error);
       if (isFirstLoad) {
-        // Fall back to cached local storage records
-        const cached = getCachedRecords(userId);
-        onUpdate(cached);
+        if (onMilkUpdate) onMilkUpdate(getCachedRecords(userId));
+        if (onIncomeUpdate) onIncomeUpdate(getCachedIncomeRecords(userId));
+        if (onExpenseUpdate) onExpenseUpdate(getCachedExpenseRecords(userId));
       }
-      if (typeof onError === "function") {
-        onError(error);
-      }
+      if (typeof onError === "function") onError(error);
     }
   );
 
   return unsubscribe;
 };
 
-/**
- * One-time fetch for records (used for periodic fallback refresh).
- */
-export const fetchMilkRecords = async (userId) => {
-  if (!isFirebaseConfigured || !db || !userId) {
-    return getCachedRecords(userId);
-  }
-
-  try {
-    const recordsQuery = query(
-      collection(db, "records"),
-      where("userId", "==", userId)
-    );
-    const snap = await getDocs(recordsQuery);
-    const list = [];
-    snap.forEach((docSnap) => {
-      const data = docSnap.data();
-      list.push({
-        id: docSnap.id,
-        ...data,
-        litreQty: Number(data.litreQty) || 0,
-        fatPercentage: Number(data.fatPercentage) || 0,
-        ratePerLitre: Number(data.ratePerLitre) || 0,
-        totalAmount: Number(data.totalAmount) || 0,
-      });
-    });
-
-    list.sort((a, b) => {
-      const tA = new Date(a.date || a.createdAt || 0).getTime();
-      const tB = new Date(b.date || b.createdAt || 0).getTime();
-      return tB - tA;
-    });
-
-    setCachedRecords(userId, list);
-    return list;
-  } catch (err) {
-    console.warn("fetchMilkRecords error:", err);
-    return getCachedRecords(userId);
-  }
-};
-
-/**
- * Saves a new milk record.
- * Handles both online real-time save and offline local queueing.
- */
+// ==========================================
+// 4. CRUD FOR MILK RECORDS
+// ==========================================
 export const saveMilkRecord = async (recordData, userId) => {
-  // Deterministic unique ID with entropy to avoid collisions across simultaneous devices
   const recordId =
     recordData.id || `REC_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-
   const nowIso = new Date().toISOString();
+
   const record = {
     ...recordData,
     id: recordId,
+    recordType: "milk",
     userId: userId || "guest",
     litreQty: Number(recordData.litreQty) || 0,
     fatPercentage: Number(recordData.fatPercentage) || 0,
@@ -298,7 +405,7 @@ export const saveMilkRecord = async (recordData, userId) => {
       const docRef = doc(db, "records", recordId);
       await setDoc(docRef, record, { merge: true });
     } catch (err) {
-      console.warn("Failed to write record to Firestore directly; queueing offline:", err);
+      console.warn("Failed to write milk record to Firestore; queueing offline:", err);
       addToPendingQueue(userId, { type: "set", id: recordId, data: record });
     }
   }
@@ -306,14 +413,12 @@ export const saveMilkRecord = async (recordData, userId) => {
   return record;
 };
 
-/**
- * Updates an existing milk record.
- */
 export const updateMilkRecord = async (id, recordData, userId) => {
   const nowIso = new Date().toISOString();
   const updated = {
     ...recordData,
     id,
+    recordType: "milk",
     userId: userId || "guest",
     litreQty: Number(recordData.litreQty) || 0,
     fatPercentage: Number(recordData.fatPercentage) || 0,
@@ -327,7 +432,7 @@ export const updateMilkRecord = async (id, recordData, userId) => {
       const docRef = doc(db, "records", id);
       await setDoc(docRef, updated, { merge: true });
     } catch (err) {
-      console.warn("Failed to update record in Firestore; queueing offline:", err);
+      console.warn("Failed to update milk record in Firestore; queueing offline:", err);
       addToPendingQueue(userId, { type: "set", id, data: updated });
     }
   }
@@ -335,49 +440,209 @@ export const updateMilkRecord = async (id, recordData, userId) => {
   return updated;
 };
 
-/**
- * Deletes a milk record.
- */
 export const deleteMilkRecord = async (id, userId) => {
   if (userId && db) {
     try {
       const docRef = doc(db, "records", id);
       await deleteDoc(docRef);
     } catch (err) {
-      console.warn("Failed to delete record from Firestore; queueing offline:", err);
+      console.warn("Failed to delete milk record from Firestore; queueing offline:", err);
       addToPendingQueue(userId, { type: "delete", id });
     }
   }
 };
 
-/**
- * Migrates local guest records to authenticated user if any non-default records exist.
- */
+// ==========================================
+// 5. CRUD FOR INCOME RECORDS
+// ==========================================
+export const saveIncomeRecord = async (incomeData, userId) => {
+  const recordId =
+    incomeData.id || `INC_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+  const nowIso = new Date().toISOString();
+
+  const record = {
+    ...incomeData,
+    id: recordId,
+    recordType: "income",
+    userId: userId || "guest",
+    amount: Number(incomeData.amount) || 0,
+    date: incomeData.date || nowIso.slice(0, 10),
+    category: incomeData.category || "Other Milk Income",
+    description: (incomeData.description || "").trim(),
+    createdAt: incomeData.createdAt || nowIso,
+    updatedAt: nowIso,
+  };
+
+  if (userId && db) {
+    try {
+      const docRef = doc(db, "records", recordId);
+      await setDoc(docRef, record, { merge: true });
+    } catch (err) {
+      console.warn("Failed to write income to Firestore; queueing offline:", err);
+      addToPendingQueue(userId, { type: "set", id: recordId, data: record });
+    }
+  }
+
+  return record;
+};
+
+export const updateIncomeRecord = async (id, incomeData, userId) => {
+  const nowIso = new Date().toISOString();
+  const updated = {
+    ...incomeData,
+    id,
+    recordType: "income",
+    userId: userId || "guest",
+    amount: Number(incomeData.amount) || 0,
+    updatedAt: nowIso,
+  };
+
+  if (userId && db) {
+    try {
+      const docRef = doc(db, "records", id);
+      await setDoc(docRef, updated, { merge: true });
+    } catch (err) {
+      console.warn("Failed to update income in Firestore; queueing offline:", err);
+      addToPendingQueue(userId, { type: "set", id, data: updated });
+    }
+  }
+
+  return updated;
+};
+
+export const deleteIncomeRecord = async (id, userId) => {
+  if (userId && db) {
+    try {
+      const docRef = doc(db, "records", id);
+      await deleteDoc(docRef);
+    } catch (err) {
+      console.warn("Failed to delete income from Firestore; queueing offline:", err);
+      addToPendingQueue(userId, { type: "delete", id });
+    }
+  }
+};
+
+// ==========================================
+// 6. CRUD FOR EXPENSE RECORDS
+// ==========================================
+export const saveExpenseRecord = async (expenseData, userId) => {
+  const recordId =
+    expenseData.id || `EXP_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+  const nowIso = new Date().toISOString();
+
+  const record = {
+    ...expenseData,
+    id: recordId,
+    recordType: "expense",
+    userId: userId || "guest",
+    amount: Number(expenseData.amount) || 0,
+    date: expenseData.date || nowIso.slice(0, 10),
+    category: expenseData.category || "Milk Purchase",
+    description: (expenseData.description || "").trim(),
+    createdAt: expenseData.createdAt || nowIso,
+    updatedAt: nowIso,
+  };
+
+  if (userId && db) {
+    try {
+      const docRef = doc(db, "records", recordId);
+      await setDoc(docRef, record, { merge: true });
+    } catch (err) {
+      console.warn("Failed to write expense to Firestore; queueing offline:", err);
+      addToPendingQueue(userId, { type: "set", id: recordId, data: record });
+    }
+  }
+
+  return record;
+};
+
+export const updateExpenseRecord = async (id, expenseData, userId) => {
+  const nowIso = new Date().toISOString();
+  const updated = {
+    ...expenseData,
+    id,
+    recordType: "expense",
+    userId: userId || "guest",
+    amount: Number(expenseData.amount) || 0,
+    updatedAt: nowIso,
+  };
+
+  if (userId && db) {
+    try {
+      const docRef = doc(db, "records", id);
+      await setDoc(docRef, updated, { merge: true });
+    } catch (err) {
+      console.warn("Failed to update expense in Firestore; queueing offline:", err);
+      addToPendingQueue(userId, { type: "set", id, data: updated });
+    }
+  }
+
+  return updated;
+};
+
+export const deleteExpenseRecord = async (id, userId) => {
+  if (userId && db) {
+    try {
+      const docRef = doc(db, "records", id);
+      await deleteDoc(docRef);
+    } catch (err) {
+      console.warn("Failed to delete expense from Firestore; queueing offline:", err);
+      addToPendingQueue(userId, { type: "delete", id });
+    }
+  }
+};
+
+// ==========================================
+// 7. GUEST RECORDS MIGRATION
+// ==========================================
 export const migrateGuestRecordsIfAny = async (userId) => {
   if (!userId || !db) return;
   try {
-    const raw = localStorage.getItem("mcms_records");
-    if (!raw) return;
-    const guestRecords = JSON.parse(raw);
-    if (!Array.isArray(guestRecords) || guestRecords.length === 0) return;
+    const recordsQuery = query(
+      collection(db, "records"),
+      where("userId", "==", userId)
+    );
+    const snap = await getDocs(recordsQuery);
+    const serverIds = new Set(snap.docs.map((d) => d.id));
+    const serverReceipts = new Set(snap.docs.map((d) => d.data().receiptNo).filter(Boolean));
 
-    // Check if user already has records on server
-    const serverRecords = await fetchMilkRecords(userId);
-    const serverIds = new Set(serverRecords.map((r) => r.id));
-    const serverReceipts = new Set(serverRecords.map((r) => r.receiptNo));
+    // 1. Milk Records Migration
+    const rawMilk = localStorage.getItem("mcms_records");
+    if (rawMilk) {
+      const guestRecords = JSON.parse(rawMilk);
+      if (Array.isArray(guestRecords)) {
+        for (const r of guestRecords) {
+          if (r.id === "REC_1001" && snap.size > 0) continue;
+          if (serverIds.has(r.id) || (r.receiptNo && serverReceipts.has(r.receiptNo))) continue;
+          await saveMilkRecord(r, userId);
+        }
+      }
+    }
 
-    for (const r of guestRecords) {
-      // Skip the built-in demo record unless user wants it
-      if (r.id === "REC_1001" && serverRecords.length > 0) continue;
-      // Skip if already in server
-      if (serverIds.has(r.id) || serverReceipts.has(r.receiptNo)) continue;
+    // 2. Income Records Migration
+    const rawIncome = localStorage.getItem("mcms_income_records");
+    if (rawIncome) {
+      const guestIncomes = JSON.parse(rawIncome);
+      if (Array.isArray(guestIncomes)) {
+        for (const inc of guestIncomes) {
+          if ((inc.id === "INC_1" || inc.id === "INC_2") && snap.size > 0) continue;
+          if (serverIds.has(inc.id)) continue;
+          await saveIncomeRecord(inc, userId);
+        }
+      }
+    }
 
-      const toSave = {
-        ...r,
-        id: r.id || `REC_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
-        userId,
-      };
-      await saveMilkRecord(toSave, userId);
+    // 3. Expense Records Migration
+    const rawExpenses = localStorage.getItem("mcms_expense_records");
+    if (rawExpenses) {
+      const guestExpenses = JSON.parse(rawExpenses);
+      if (Array.isArray(guestExpenses)) {
+        for (const exp of guestExpenses) {
+          if ((exp.id === "EXP_1" || exp.id === "EXP_2" || exp.id === "EXP_3") && snap.size > 0) continue;
+          if (serverIds.has(exp.id)) continue;
+          await saveExpenseRecord(exp, userId);
+        }
+      }
     }
   } catch (err) {
     console.warn("Guest records migration warning:", err);

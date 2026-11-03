@@ -9,10 +9,20 @@ import { useAuth } from "./context/useAuth";
 import {
   getCachedRecords,
   setCachedRecords,
-  subscribeToMilkRecords,
   saveMilkRecord,
   updateMilkRecord,
   deleteMilkRecord,
+  getCachedIncomeRecords,
+  setCachedIncomeRecords,
+  saveIncomeRecord,
+  updateIncomeRecord,
+  deleteIncomeRecord,
+  getCachedExpenseRecords,
+  setCachedExpenseRecords,
+  saveExpenseRecord,
+  updateExpenseRecord,
+  deleteExpenseRecord,
+  subscribeToAllUserData,
   flushPendingSyncQueue,
   migrateGuestRecordsIfAny,
 } from "./services/recordsSyncService";
@@ -61,64 +71,11 @@ function App() {
   });
 
   const [incomeRecords, setIncomeRecords] = useState(() => {
-    const stored = localStorage.getItem("mcms_income_records");
-    if (stored) return JSON.parse(stored);
-
-    const defaults = [
-      {
-        id: "INC_1",
-        date: new Date().toISOString().slice(0, 10),
-        category: "Product Sales",
-        description: "Ghee sales to local distributor",
-        amount: 2500.0,
-      },
-      {
-        id: "INC_2",
-        date: new Date(Date.now() - 24 * 60 * 60 * 1000)
-          .toISOString()
-          .slice(0, 10),
-        category: "Subsidy",
-        description: "Govt Milk Cooperative Subsidy",
-        amount: 1200.0,
-      },
-    ];
-    localStorage.setItem("mcms_income_records", JSON.stringify(defaults));
-    return defaults;
+    return getCachedIncomeRecords(null);
   });
 
   const [expenseRecords, setExpenseRecords] = useState(() => {
-    const stored = localStorage.getItem("mcms_expense_records");
-    if (stored) return JSON.parse(stored);
-
-    const defaults = [
-      {
-        id: "EXP_1",
-        date: new Date().toISOString().slice(0, 10),
-        category: "Milk Purchase",
-        description: "Milk purchased from farmers",
-        amount: 3500.0,
-      },
-      {
-        id: "EXP_2",
-        date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
-          .toISOString()
-          .slice(0, 10),
-        category: "Transport",
-        description: "Pickup van refueling",
-        amount: 1100.0,
-      },
-      {
-        id: "EXP_3",
-        date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
-          .toISOString()
-          .slice(0, 10),
-        category: "Worker Salary",
-        description: "Daily wage payment",
-        amount: 800.0,
-      },
-    ];
-    localStorage.setItem("mcms_expense_records", JSON.stringify(defaults));
-    return defaults;
+    return getCachedExpenseRecords(null);
   });
 
   // Navigation state: dashboard | milk-entry | profit | more
@@ -220,23 +177,26 @@ function App() {
     }
   }, [currentUser]);
 
-  // Multi-device real-time data synchronization for milk records
+  // Multi-device real-time data synchronization for milk and financial records
   useEffect(() => {
     const userId = currentUser?.uid || null;
 
     // Load instantly from cached storage
-    const cached = getCachedRecords(userId);
-    setRecords(cached);
+    setRecords(getCachedRecords(userId));
+    setIncomeRecords(getCachedIncomeRecords(userId));
+    setExpenseRecords(getCachedExpenseRecords(userId));
 
     if (userId) {
       // Migrate previous guest records if existing
       migrateGuestRecordsIfAny(userId).catch(() => {});
 
       // Subscribe to real-time updates across all logged-in devices
-      const unsubscribe = subscribeToMilkRecords(
+      const unsubscribe = subscribeToAllUserData(
         userId,
-        (syncedRecords) => {
-          setRecords(syncedRecords);
+        {
+          onMilkUpdate: (syncedRecords) => setRecords(syncedRecords),
+          onIncomeUpdate: (syncedIncomes) => setIncomeRecords(syncedIncomes),
+          onExpenseUpdate: (syncedExpenses) => setExpenseRecords(syncedExpenses),
         },
         (syncErr) => {
           console.warn("Real-time sync notice:", syncErr?.message || syncErr);
@@ -269,21 +229,18 @@ function App() {
     }
   }, [currentUser]);
 
-  // Sync state to local storage cache for the active account
+  // Sync states to local storage cache for the active account
   useEffect(() => {
     setCachedRecords(currentUser?.uid || null, records);
   }, [records, currentUser]);
 
   useEffect(() => {
-    localStorage.setItem("mcms_income_records", JSON.stringify(incomeRecords));
-  }, [incomeRecords]);
+    setCachedIncomeRecords(currentUser?.uid || null, incomeRecords);
+  }, [incomeRecords, currentUser]);
 
   useEffect(() => {
-    localStorage.setItem(
-      "mcms_expense_records",
-      JSON.stringify(expenseRecords),
-    );
-  }, [expenseRecords]);
+    setCachedExpenseRecords(currentUser?.uid || null, expenseRecords);
+  }, [expenseRecords, currentUser]);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", currentTheme);
@@ -412,42 +369,100 @@ function App() {
   };
 
 
-  // --- Income Handlers ---
-  const handleAddIncome = (incomeData) => {
-    const income = {
-      id: "INC_" + Date.now(),
+  // --- Income Handlers (Real-time and Offline-supported) ---
+  const handleAddIncome = async (incomeData) => {
+    const userId = currentUser?.uid || null;
+    const incomeId =
+      incomeData.id || `INC_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    const optimisticIncome = {
       ...incomeData,
+      id: incomeId,
+      userId: userId || "guest",
+      amount: Number(incomeData.amount) || 0,
+      createdAt: incomeData.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
-    setIncomeRecords((prev) => [income, ...prev]);
+
+    setIncomeRecords((prev) => [optimisticIncome, ...prev.filter((r) => r.id !== incomeId)]);
+
+    try {
+      await saveIncomeRecord(optimisticIncome, userId);
+    } catch (saveErr) {
+      console.warn("Background income save error:", saveErr);
+    }
   };
 
-  const handleUpdateIncome = (id, incomeData) => {
+  const handleUpdateIncome = async (id, incomeData) => {
+    const userId = currentUser?.uid || null;
+    const nowIso = new Date().toISOString();
     setIncomeRecords((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, ...incomeData } : r)),
+      prev.map((r) => (r.id === id ? { ...r, ...incomeData, amount: Number(incomeData.amount) || 0, updatedAt: nowIso } : r))
     );
+
+    try {
+      await updateIncomeRecord(id, incomeData, userId);
+    } catch (updateErr) {
+      console.warn("Background income update error:", updateErr);
+    }
   };
 
-  const handleDeleteIncome = (id) => {
+  const handleDeleteIncome = async (id) => {
+    const userId = currentUser?.uid || null;
     setIncomeRecords((prev) => prev.filter((r) => r.id !== id));
+
+    try {
+      await deleteIncomeRecord(id, userId);
+    } catch (deleteErr) {
+      console.warn("Background income delete error:", deleteErr);
+    }
   };
 
-  // --- Expense Handlers ---
-  const handleAddExpense = (expenseData) => {
-    const expense = {
-      id: "EXP_" + Date.now(),
+  // --- Expense Handlers (Real-time and Offline-supported) ---
+  const handleAddExpense = async (expenseData) => {
+    const userId = currentUser?.uid || null;
+    const expenseId =
+      expenseData.id || `EXP_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    const optimisticExpense = {
       ...expenseData,
+      id: expenseId,
+      userId: userId || "guest",
+      amount: Number(expenseData.amount) || 0,
+      createdAt: expenseData.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
-    setExpenseRecords((prev) => [expense, ...prev]);
+
+    setExpenseRecords((prev) => [optimisticExpense, ...prev.filter((r) => r.id !== expenseId)]);
+
+    try {
+      await saveExpenseRecord(optimisticExpense, userId);
+    } catch (saveErr) {
+      console.warn("Background expense save error:", saveErr);
+    }
   };
 
-  const handleUpdateExpense = (id, expenseData) => {
+  const handleUpdateExpense = async (id, expenseData) => {
+    const userId = currentUser?.uid || null;
+    const nowIso = new Date().toISOString();
     setExpenseRecords((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, ...expenseData } : r)),
+      prev.map((r) => (r.id === id ? { ...r, ...expenseData, amount: Number(expenseData.amount) || 0, updatedAt: nowIso } : r))
     );
+
+    try {
+      await updateExpenseRecord(id, expenseData, userId);
+    } catch (updateErr) {
+      console.warn("Background expense update error:", updateErr);
+    }
   };
 
-  const handleDeleteExpense = (id) => {
+  const handleDeleteExpense = async (id) => {
+    const userId = currentUser?.uid || null;
     setExpenseRecords((prev) => prev.filter((r) => r.id !== id));
+
+    try {
+      await deleteExpenseRecord(id, userId);
+    } catch (deleteErr) {
+      console.warn("Background expense delete error:", deleteErr);
+    }
   };
 
   // --- Camera & OCR Scanner logic (Global FAB hook) ---
