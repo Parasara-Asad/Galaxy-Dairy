@@ -3,7 +3,19 @@ import BottomNavigation from "./components/BottomNavigation";
 import DashboardView from "./components/DashboardView";
 import MilkEntryView from "./components/MilkEntryView";
 import ProfitLossView from "./components/ProfitLossView";
-import RecordsView from "./components/RecordsView";
+import IncomeOutcomeView from "./components/IncomeOutcomeView";
+import ThemeSelectorModal from "./components/ThemeSelectorModal";
+import { useAuth } from "./context/useAuth";
+
+const THEME_LABELS = {
+  light: "Light Mode",
+  dark: "Dark Mode",
+  normal: "Normal UI",
+  claymorphism: "Claymorphism",
+  glassmorphism: "Glassmorphism",
+};
+import AuthModal from "./components/auth/AuthModal";
+import ProfileModal from "./components/profile/ProfileModal";
 
 const CURRENT_VERSION = "1.0.0";
 const UPDATE_CHECK_URL =
@@ -20,51 +32,6 @@ function isNewVersion(current, latest) {
     if (c > l) return false;
   }
   return false;
-}
-
-const RATE_CHART = {
-  3.0: 35.0,
-  3.5: 38.0,
-  4.0: 42.0,
-  4.5: 45.0,
-  5.0: 48.0,
-  5.5: 52.0,
-  6.0: 56.0,
-  6.5: 60.0,
-  6.8: 62.0,
-  7.0: 64.0,
-  7.5: 68.0,
-  8.0: 72.0,
-  8.5: 76.0,
-  9.0: 80.0,
-  9.5: 84.0,
-  10.0: 88.0,
-};
-
-function calculateRate(fat) {
-  const fatVal = parseFloat(fat);
-  if (isNaN(fatVal) || fatVal <= 0) return 0;
-  const availableFats = Object.keys(RATE_CHART)
-    .map(Number)
-    .sort((a, b) => a - b);
-  if (RATE_CHART[fatVal]) return RATE_CHART[fatVal];
-  if (fatVal <= availableFats[0]) return RATE_CHART[availableFats[0]];
-  if (fatVal >= availableFats[availableFats.length - 1])
-    return RATE_CHART[availableFats[availableFats.length - 1]];
-  let lower = availableFats[0];
-  let upper = availableFats[availableFats.length - 1];
-  for (let i = 0; i < availableFats.length - 1; i++) {
-    if (fatVal >= availableFats[i] && fatVal <= availableFats[i + 1]) {
-      lower = availableFats[i];
-      upper = availableFats[i + 1];
-      break;
-    }
-  }
-  const rateLower = RATE_CHART[lower];
-  const rateUpper = RATE_CHART[upper];
-  const calculatedRate =
-    rateLower + ((fatVal - lower) / (upper - lower)) * (rateUpper - rateLower);
-  return parseFloat(calculatedRate.toFixed(2));
 }
 
 function App() {
@@ -167,14 +134,37 @@ function App() {
 
   // Navigation state: dashboard | milk-entry | profit | more
   const [currentTab, setCurrentTab] = useState("dashboard");
-  // Sub-navigation state inside more tab: menu | records | ledger
+  // Sub-navigation state inside more tab: menu | income-outcome
   const [moreSubTab, setMoreSubTab] = useState("menu");
 
-  const [darkMode, setDarkMode] = useState(() => {
+  // 5-Mode UI Theme state: light | dark | normal | claymorphism | glassmorphism
+  const [currentTheme, setCurrentTheme] = useState(() => {
+    const saved = localStorage.getItem("mcms_app_theme");
+    if (saved && ["light", "dark", "normal", "claymorphism", "glassmorphism"].includes(saved)) {
+      return saved;
+    }
+    const stored = localStorage.getItem("mcms_theme");
+    if (stored === "light") return "light";
+    return "dark"; // Default was dark mode
+  });
+
+  const [darkMode, setDarkModeState] = useState(() => {
+    const saved = localStorage.getItem("mcms_app_theme");
+    if (saved) return saved === "dark";
     const stored = localStorage.getItem("mcms_theme");
     if (stored === null) return true;
     return stored === "dark";
   });
+
+  const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
+
+  const handleToggleDarkMode = (isDark) => {
+    if (isDark) {
+      setCurrentTheme("dark");
+    } else {
+      setCurrentTheme("light");
+    }
+  };
 
   const [fontSize, setFontSize] = useState(() => {
     const stored = localStorage.getItem("mcms_font_size");
@@ -222,7 +212,24 @@ function App() {
     releaseNotes: "",
   });
   const [showUpdateModal, setShowUpdateModal] = useState(false);
-  const [showResetModal, setShowResetModal] = useState(false);
+
+  // --- Authentication States ---
+  const { currentUser, userProfile, loading: authLoading, isFirebaseConfigured, logout } = useAuth();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+
+  // Notify the PWA install prompt (index.html) when user signs in / out
+  useEffect(() => {
+    if (currentUser) {
+      if (typeof window.galaxyOnUserSignedIn === "function") {
+        window.galaxyOnUserSignedIn();
+      }
+    } else {
+      if (typeof window.galaxyOnUserSignedOut === "function") {
+        window.galaxyOnUserSignedOut();
+      }
+    }
+  }, [currentUser]);
 
   // Sync states to local storage
   useEffect(() => {
@@ -241,14 +248,22 @@ function App() {
   }, [expenseRecords]);
 
   useEffect(() => {
-    if (darkMode) {
+    document.documentElement.setAttribute("data-theme", currentTheme);
+    document.body.setAttribute("data-theme", currentTheme);
+    localStorage.setItem("mcms_app_theme", currentTheme);
+
+    if (currentTheme === "dark") {
       document.body.classList.add("dark-mode");
+      document.documentElement.classList.add("dark-mode");
       localStorage.setItem("mcms_theme", "dark");
+      setDarkModeState(true);
     } else {
       document.body.classList.remove("dark-mode");
+      document.documentElement.classList.remove("dark-mode");
       localStorage.setItem("mcms_theme", "light");
+      setDarkModeState(false);
     }
-  }, [darkMode]);
+  }, [currentTheme]);
 
   useEffect(() => {
     document.documentElement.classList.remove(
@@ -288,24 +303,20 @@ function App() {
     const checkUpdates = async () => {
       try {
         const response = await fetch(UPDATE_CHECK_URL);
-        if (!response.ok) {
-          throw new Error("Failed to fetch update info");
-        }
+        if (!response.ok) return;
         const data = await response.json();
-        if (data && data.version) {
-          if (isNewVersion(CURRENT_VERSION, data.version)) {
-            setUpdateInfo({
-              hasUpdate: true,
-              version: data.version,
-              apkUrl: data.apkUrl || "",
-              forceUpdate: !!data.forceUpdate,
-              releaseNotes: data.releaseNotes || "New version available!",
-            });
-            setShowUpdateModal(true);
-          }
+        if (data && data.version && isNewVersion(CURRENT_VERSION, data.version)) {
+          setUpdateInfo({
+            hasUpdate: true,
+            version: data.version,
+            apkUrl: data.apkUrl || "",
+            forceUpdate: Boolean(data.forceUpdate),
+            releaseNotes: data.releaseNotes || "New version available!",
+          });
+          setShowUpdateModal(true);
         }
-      } catch (err) {
-        console.warn("Update check failed:", err);
+      } catch {
+        // Quietly ignore network failures during local development or offline mode
       }
     };
     checkUpdates();
@@ -315,6 +326,7 @@ function App() {
   const handleSaveRecord = (recordData) => {
     const record = {
       id: "REC_" + Date.now(),
+      userId: currentUser?.uid || "guest",
       ...recordData,
     };
     setRecords((prev) => [record, ...prev]);
@@ -334,9 +346,6 @@ function App() {
     triggerToast("Record deleted.", "danger");
   };
 
-  const handleResetAllData = () => {
-    setShowResetModal(true);
-  };
 
   // --- Income Handlers ---
   const handleAddIncome = (incomeData) => {
@@ -678,18 +687,28 @@ function App() {
   return (
     <div className="wrapper">
       {/* Compact Top Header Bar */}
-      <header className="top-navbar bg-gradient-primary text-white p-3 shadow-sm d-flex justify-content-between align-items-center">
+      <header className="top-navbar p-3 d-flex justify-content-between align-items-center">
         <div className="d-flex align-items-center gap-2 flex-shrink-0">
-          <i className="bi bi-droplet-half fs-4"></i>
+          <i className="bi bi-flower1 fs-4 text-white"></i>
           <div>
-            <h1 className="h6 mb-0 fw-bold text-nowrap">Galaxy Dairy</h1>
-            <span className="small-text opacity-75 text-nowrap">
-              Cooperative App
+            <h1 className="h6 mb-0 fw-bold text-white text-nowrap">Galaxy Dairy</h1>
+            <span className="text-white opacity-75 text-nowrap" style={{ fontSize: "0.65rem" }}>
+              Cooperative
             </span>
           </div>
         </div>
-        <div className="flex-shrink-0 ms-2">
-          <span className="badge bg-light text-primary px-2 px-sm-3 py-1 rounded-pill fw-normal small-text text-nowrap">
+        <div className="flex-shrink-0 ms-2 d-flex align-items-center gap-2">
+          {/* Live clock badge */}
+          <span
+            className="px-2 px-sm-3 py-1 rounded-pill fw-normal text-nowrap d-none d-xs-inline-block"
+            style={{
+              fontSize: "0.7rem",
+              background: "rgba(255,255,255,0.15)",
+              color: "#ffffff",
+              border: "1px solid rgba(255,255,255,0.2)",
+              backdropFilter: "blur(4px)",
+            }}
+          >
             {(() => {
               const day = liveTime.getDate().toString().padStart(2, "0");
               const months = [
@@ -715,6 +734,57 @@ function App() {
               return `${day} ${month}, ${hours}:${minutes} ${ampm}`;
             })()}
           </span>
+
+          {currentUser ? (
+            <button
+              type="button"
+              className="btn btn-sm rounded-pill d-flex align-items-center gap-1 px-2 py-1 border-0"
+              style={{ background: "rgba(255,255,255,0.9)", color: "#15803d" }}
+              onClick={() => setIsProfileModalOpen(true)}
+              title="Open User Profile"
+            >
+              {userProfile?.photoURL || currentUser?.photoURL ? (
+                <img
+                  src={userProfile?.photoURL || currentUser?.photoURL}
+                  alt="avatar"
+                  className="rounded-circle object-fit-cover"
+                  style={{ width: "22px", height: "22px", border: "2px solid #16a34a" }}
+                />
+              ) : (
+                <div
+                  className="rounded-circle d-flex align-items-center justify-content-center fw-bold"
+                  style={{ width: "22px", height: "22px", fontSize: "10px", background: "#dcfce7", color: "#15803d", border: "2px solid #16a34a" }}
+                >
+                  {(userProfile?.fullName || currentUser?.displayName || "U")
+                    .slice(0, 2)
+                    .toUpperCase()}
+                </div>
+              )}
+              <span
+                className="small fw-semibold d-none d-sm-inline"
+                style={{
+                  maxWidth: "90px",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  color: "#15803d",
+                }}
+              >
+                {userProfile?.fullName || currentUser?.displayName || "Profile"}
+              </span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="btn btn-sm rounded-pill fw-semibold px-2 px-sm-3 py-1 border-0 d-flex align-items-center gap-1"
+              style={{ background: "rgba(255,255,255,0.9)", color: "#15803d" }}
+              onClick={() => setIsAuthModalOpen(true)}
+              title="Sign In / Register"
+            >
+              <i className="bi bi-person-circle"></i>
+              <span className="small">Sign In</span>
+            </button>
+          )}
         </div>
       </header>
 
@@ -725,6 +795,7 @@ function App() {
             records={records}
             setCurrentTab={setCurrentTab}
             openScanModal={openScanModal}
+            userName={userProfile?.fullName || currentUser?.displayName}
           />
         )}
 
@@ -741,6 +812,8 @@ function App() {
             triggerToast={triggerToast}
             showLoading={setLoading}
             openScanModal={openScanModal}
+            defaultFarmerName={userProfile?.fullName || currentUser?.displayName}
+            defaultMobileNumber={userProfile?.phoneNumber || currentUser?.phoneNumber}
           />
         )}
 
@@ -766,32 +839,94 @@ function App() {
             {moreSubTab === "menu" && (
               <div className="card border-0 p-3 rounded-4 shadow-sm">
                 <div className="list-group list-group-flush">
+                  {currentUser ? (
+                    <div className="list-group-item d-flex align-items-center gap-3 py-3 border-0 rounded-3 mb-2 bg-primary-subtle">
+                      <div
+                        className="bg-primary text-white p-2 rounded-circle d-flex align-items-center justify-content-center shadow-sm"
+                        style={{ width: "40px", height: "40px" }}
+                      >
+                        <i className="bi bi-person-fill fs-5"></i>
+                      </div>
+                      <div className="text-start overflow-hidden">
+                        <span className="fw-bold text-dark d-block text-truncate">
+                          {userProfile?.fullName || currentUser?.displayName || "My Profile"}
+                        </span>
+                        <span className="small text-muted d-block text-truncate">
+                          @{userProfile?.username || "user"}
+                        </span>
+                        <span className="small text-muted d-block text-truncate">
+                          {userProfile?.email || currentUser?.email || ""}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      className="list-group-item list-group-item-action d-flex align-items-center justify-content-between py-3 border-0 rounded-3 mb-2 bg-primary-subtle"
+                      onClick={() => setIsAuthModalOpen(true)}
+                    >
+                      <div className="d-flex align-items-center gap-3">
+                        <div
+                          className="bg-primary text-white p-2 rounded-circle d-flex align-items-center justify-content-center shadow-sm"
+                          style={{ width: "40px", height: "40px" }}
+                        >
+                          <i className="bi bi-box-arrow-in-right fs-5"></i>
+                        </div>
+                        <div className="text-start">
+                          <span className="fw-bold text-dark d-block">Sign In / Register</span>
+                          <span className="small text-muted">Google, Phone OTP, or Username</span>
+                        </div>
+                      </div>
+                      <i className="bi bi-chevron-right text-muted"></i>
+                    </button>
+                  )}
+
+
+
                   <button
                     className="list-group-item list-group-item-action d-flex align-items-center justify-content-between py-3 border-0 rounded-3 mb-2"
-                    onClick={() => setMoreSubTab("records")}
+                    onClick={() => setMoreSubTab("income-outcome")}
                   >
                     <div className="d-flex align-items-center gap-3">
-                      <div className="bg-primary-subtle text-primary p-2 rounded-circle d-flex">
-                        <i className="bi bi-folder2-open fs-5"></i>
+                      <div className="bg-success-subtle text-success p-2 rounded-circle d-flex">
+                        <i className="bi bi-file-earmark-bar-graph fs-5"></i>
                       </div>
-                      <span className="fw-semibold">
-                        Milk Collection Records
-                      </span>
+                      <div className="text-start">
+                        <span className="fw-semibold text-dark d-block">
+                          All Income & Outcome
+                        </span>
+                        <span className="small text-muted">
+                          View transactions & download PDF
+                        </span>
+                      </div>
                     </div>
                     <i className="bi bi-chevron-right text-muted"></i>
                   </button>
 
+                  {/* Appearance / UI Theme Selection Option */}
                   <button
+                    type="button"
                     className="list-group-item list-group-item-action d-flex align-items-center justify-content-between py-3 border-0 rounded-3 mb-2"
-                    onClick={() => setMoreSubTab("ledger")}
+                    onClick={() => setIsThemeModalOpen(true)}
                   >
                     <div className="d-flex align-items-center gap-3">
-                      <div className="bg-success-subtle text-success p-2 rounded-circle d-flex">
-                        <i className="bi bi-cash-stack fs-5"></i>
+                      <div className="bg-primary-subtle text-primary p-2 rounded-circle d-flex">
+                        <i className="bi bi-palette-fill fs-5"></i>
                       </div>
-                      <span className="fw-semibold">Ledger & Finance Logs</span>
+                      <div className="text-start">
+                        <span className="fw-semibold text-dark d-block">
+                          Appearance / UI Theme
+                        </span>
+                        <span className="small text-muted">
+                          {THEME_LABELS[currentTheme] || "Theme"} • 5 UI modes
+                        </span>
+                      </div>
                     </div>
-                    <i className="bi bi-chevron-right text-muted"></i>
+                    <div className="d-flex align-items-center gap-2">
+                      <span className="badge rounded-pill bg-primary px-2 py-1 small">
+                        {THEME_LABELS[currentTheme] || currentTheme}
+                      </span>
+                      <i className="bi bi-chevron-right text-muted"></i>
+                    </div>
                   </button>
 
                   <div className="list-group-item d-flex align-items-center justify-content-between py-3 border-0 rounded-3 mb-2 bg-light">
@@ -808,7 +943,7 @@ function App() {
                         className="form-check-input"
                         type="checkbox"
                         checked={darkMode}
-                        onChange={(e) => setDarkMode(e.target.checked)}
+                        onChange={(e) => handleToggleDarkMode(e.target.checked)}
                       />
                     </div>
                   </div>
@@ -878,19 +1013,21 @@ function App() {
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    className="list-group-item list-group-item-action d-flex align-items-center justify-content-between py-3 border-0 rounded-3 mb-2 bg-light text-danger"
-                    onClick={handleResetAllData}
-                  >
-                    <div className="d-flex align-items-center gap-3">
-                      <div className="bg-danger-subtle text-danger p-2 rounded-circle d-flex">
-                        <i className="bi bi-exclamation-triangle-fill fs-5"></i>
+                  {currentUser && (
+                    <button
+                      type="button"
+                      className="list-group-item list-group-item-action d-flex align-items-center justify-content-between py-3 border-0 rounded-3 mb-2 bg-danger-subtle"
+                      onClick={async () => { try { await logout(); } catch (e) { console.error(e); } }}
+                    >
+                      <div className="d-flex align-items-center gap-3">
+                        <div className="bg-danger text-white p-2 rounded-circle d-flex">
+                          <i className="bi bi-box-arrow-right fs-5"></i>
+                        </div>
+                        <span className="fw-semibold text-danger">Log Out</span>
                       </div>
-                      <span className="fw-semibold text-danger">Reset & Delete All Data</span>
-                    </div>
-                    <i className="bi bi-chevron-right text-danger"></i>
-                  </button>
+                      <i className="bi bi-chevron-right text-danger"></i>
+                    </button>
+                  )}
                 </div>
                 <div className="text-center mt-5 text-muted small-text">
                   <p className="mb-0">Galaxy Dairy Mobile App v2.1.0</p>
@@ -899,24 +1036,9 @@ function App() {
               </div>
             )}
 
-            {moreSubTab === "records" && (
-              <div>
-                <button
-                  className="btn btn-sm btn-outline-secondary rounded-pill mb-3"
-                  onClick={() => setMoreSubTab("menu")}
-                >
-                  <i className="bi bi-chevron-left"></i> Back to Menu
-                </button>
-                <RecordsView
-                  records={records}
-                  onEditRecord={handleEditRecordFromList}
-                  onDeleteRecord={handleDeleteRecord}
-                  triggerToast={triggerToast}
-                />
-              </div>
-            )}
 
-            {moreSubTab === "ledger" && (
+
+            {moreSubTab === "income-outcome" && (
               <div>
                 <button
                   className="btn btn-sm btn-outline-secondary rounded-pill mb-3"
@@ -924,21 +1046,11 @@ function App() {
                 >
                   <i className="bi bi-chevron-left"></i> Back to Menu
                 </button>
-                {/* Mount the ProfitLossView ledger logs sub-screen */}
-                <ProfitLossView
+                <IncomeOutcomeView
                   records={records}
                   incomeRecords={incomeRecords}
                   expenseRecords={expenseRecords}
-                  darkMode={darkMode}
-                  onAddIncome={handleAddIncome}
-                  onUpdateIncome={handleUpdateIncome}
-                  onDeleteIncome={handleDeleteIncome}
-                  onAddExpense={handleAddExpense}
-                  onUpdateExpense={handleUpdateExpense}
-                  onDeleteExpense={handleDeleteExpense}
                   triggerToast={triggerToast}
-                  showLoading={setLoading}
-                  onlyLedger={true}
                 />
               </div>
             )}
@@ -1444,72 +1556,29 @@ function App() {
         </div>
       )}
 
-      {/* Reset & Delete All Data Modal */}
-      {showResetModal && (
-        <div
-          className="modal show d-block"
-          tabIndex="-1"
-          style={{ backgroundColor: "rgba(0, 0, 0, 0.6)", zIndex: 1160 }}
-        >
-          <div className="modal-dialog modal-dialog-centered px-3">
-            <div className="modal-content border-0 shadow-lg rounded-4">
-              <div className="modal-header border-bottom bg-danger text-white p-3 rounded-top-4 d-flex justify-content-between align-items-center">
-                <h5 className="modal-title fw-bold d-flex align-items-center gap-2 m-0 fs-5">
-                  <i className="bi bi-exclamation-triangle-fill"></i>
-                  <span>Delete All Data?</span>
-                </h5>
-                <button
-                  type="button"
-                  className="btn-close btn-close-white"
-                  onClick={() => setShowResetModal(false)}
-                  aria-label="Close"
-                ></button>
-              </div>
-              <div className="modal-body p-4">
-                <p className="fw-semibold fs-6 mb-3">
-                  Are you absolutely sure you want to delete all data?
-                </p>
-                
-                <div className="alert alert-danger py-2 mb-3 small d-flex align-items-start gap-2">
-                  <i className="bi bi-info-circle-fill text-danger fs-5 mt-0.5"></i>
-                  <span>
-                    This action will permanently delete all Milk Collection records, Income logs, and Expense logs. This action cannot be undone!
-                  </span>
-                </div>
-                
-                <p className="text-muted small mb-0">
-                  All local application data and settings will be reset to default.
-                </p>
-              </div>
-              <div className="modal-footer border-0 p-3 d-flex gap-2">
-                <button
-                  type="button"
-                  className="btn btn-outline-secondary rounded-pill px-4 flex-fill"
-                  onClick={() => setShowResetModal(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-danger rounded-pill px-4 flex-fill fw-bold"
-                  onClick={() => {
-                    setRecords([]);
-                    setIncomeRecords([]);
-                    setExpenseRecords([]);
-                    localStorage.removeItem("mcms_records");
-                    localStorage.removeItem("mcms_income_records");
-                    localStorage.removeItem("mcms_expense_records");
-                    triggerToast("All application data has been successfully deleted.", "danger");
-                    setShowResetModal(false);
-                  }}
-                >
-                  Delete Everything
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+
+      {/* Firebase Authentication Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen || (isFirebaseConfigured && !currentUser && !authLoading)}
+        onClose={() => setIsAuthModalOpen(false)}
+      />
+
+      {/* User Profile & Account Settings Modal */}
+      <ProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+      />
+
+      {/* Global 5-Theme Selector Modal with Live Previews */}
+      <ThemeSelectorModal
+        isOpen={isThemeModalOpen}
+        onClose={() => setIsThemeModalOpen(false)}
+        currentTheme={currentTheme}
+        onSelectTheme={(selectedId) => {
+          setCurrentTheme(selectedId);
+          triggerToast(`Switched to ${THEME_LABELS[selectedId] || selectedId}!`, "success");
+        }}
+      />
 
       {/* Loading Overlay Spinner */}
       {loading && (

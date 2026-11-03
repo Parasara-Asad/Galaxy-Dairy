@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 
 const RATE_CHART = {
   3.0: 35.0,
@@ -56,6 +56,8 @@ function MilkEntryView({
   triggerToast,
   showLoading,
   openScanModal,
+  defaultFarmerName,
+  defaultMobileNumber,
 }) {
   const [receiptNo, setReceiptNo] = useState("");
   const [entryDate, setEntryDate] = useState("");
@@ -64,8 +66,8 @@ function MilkEntryView({
     return now.getHours() >= 12 ? "Evening" : "Morning";
   });
   const [milkType, setMilkType] = useState("Buffalo");
-  const [farmerName, setFarmerName] = useState("Parasara Zahid");
-  const [mobileNumber, setMobileNumber] = useState("9879400931");
+  const [farmerName, setFarmerName] = useState(() => defaultFarmerName || "Parasara Zahid");
+  const [mobileNumber, setMobileNumber] = useState(() => defaultMobileNumber || "9879400931");
   const [villageName, setVillageName] = useState("Sindhavadar");
   const [litreQty, setLitreQty] = useState("");
   const [fatPercentage, setFatPercentage] = useState("");
@@ -92,6 +94,34 @@ function MilkEntryView({
     return now.getHours() >= 12 ? "Evening" : "Morning";
   };
 
+  const generateReceiptNumber = useCallback(() => {
+    const timestamp = Date.now().toString().slice(-4);
+    const count = (records.length + 1).toString().padStart(3, "0");
+    return `RC-${timestamp}${count}`;
+  }, [records.length]);
+
+  const autoSetDateTime = useCallback(() => {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    return now.toISOString().slice(0, 16);
+  }, []);
+
+  const resetForm = useCallback(() => {
+    setReceiptNo(generateReceiptNumber());
+    const defaultDate = autoSetDateTime();
+    setEntryDate(defaultDate);
+    setMilkShift(getAutoShift(defaultDate));
+    setMilkType("Buffalo");
+    setFarmerName(defaultFarmerName || "Parasara Zahid");
+    setMobileNumber(defaultMobileNumber || "9879400931");
+    setVillageName("Sindhavadar");
+    setLitreQty("");
+    setFatPercentage("");
+    setRatePerLitre("");
+    setEntryRemarks("");
+    setEditingRecord(null);
+  }, [generateReceiptNumber, autoSetDateTime, defaultFarmerName, defaultMobileNumber, setEditingRecord]);
+
   // Handle Editing State
   useEffect(() => {
     if (editingRecord) {
@@ -111,7 +141,7 @@ function MilkEntryView({
     } else {
       resetForm();
     }
-  }, [editingRecord, records.length]);
+  }, [editingRecord, resetForm]);
 
   // Handle OCR Prefill State
   useEffect(() => {
@@ -121,44 +151,16 @@ function MilkEntryView({
       setEntryDate(defaultDate);
       setMilkShift(prefillRecord.milkShift || getAutoShift(defaultDate));
       setMilkType(prefillRecord.milkType || "Buffalo");
-      setFarmerName(prefillRecord.farmerName || "Parasara Zahid");
-      setMobileNumber("9879400931");
+      setFarmerName(prefillRecord.farmerName || defaultFarmerName || "Parasara Zahid");
+      setMobileNumber(defaultMobileNumber || "9879400931");
       setVillageName("Sindhavadar");
       setLitreQty(prefillRecord.litreQty || "");
       setFatPercentage(prefillRecord.fatPercentage || "");
       setRatePerLitre(prefillRecord.ratePerLitre || "");
       setEntryRemarks("Scanned via Receipt OCR");
-      onClearPrefill(); // Clear from App state
+      if (onClearPrefill) onClearPrefill();
     }
-  }, [prefillRecord]);
-
-  const generateReceiptNumber = () => {
-    const timestamp = Date.now().toString().slice(-4);
-    const count = (records.length + 1).toString().padStart(3, "0");
-    return `RC-${timestamp}${count}`;
-  };
-
-  const autoSetDateTime = () => {
-    const now = new Date();
-    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-    return now.toISOString().slice(0, 16);
-  };
-
-  const resetForm = () => {
-    setReceiptNo(generateReceiptNumber());
-    const defaultDate = autoSetDateTime();
-    setEntryDate(defaultDate);
-    setMilkShift(getAutoShift(defaultDate));
-    setMilkType("Buffalo");
-    setFarmerName("Parasara Zahid");
-    setMobileNumber("9879400931");
-    setVillageName("Sindhavdar");
-    setLitreQty("");
-    setFatPercentage("");
-    setRatePerLitre("");
-    setEntryRemarks("");
-    setEditingRecord(null);
-  };
+  }, [prefillRecord, generateReceiptNumber, autoSetDateTime, defaultFarmerName, defaultMobileNumber, onClearPrefill]);
 
   // Fat change handler: auto calculates Rate Per Litre or uses user's custom rate
   const handleFatChange = (val) => {

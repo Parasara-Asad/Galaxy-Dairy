@@ -39,6 +39,8 @@ self.addEventListener('activate', event => {
 // Fetch event: implement caching strategies
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
+  // Never intercept requests in local development
+  if (self.location.hostname === 'localhost' || self.location.hostname === '127.0.0.1') return;
 
   const url = new URL(event.request.url);
 

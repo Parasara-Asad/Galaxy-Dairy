@@ -33,10 +33,26 @@
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css"
     />
+    <!-- Early Theme Initialization to prevent flash of wrong theme -->
+    <script>
+      (function() {
+        try {
+          var saved = localStorage.getItem('mcms_app_theme');
+          var old = localStorage.getItem('mcms_theme');
+          var theme = saved || (old === 'dark' ? 'dark' : (old === 'light' ? 'light' : 'dark'));
+          document.documentElement.setAttribute('data-theme', theme);
+          if (theme === 'dark') {
+            document.documentElement.classList.add('dark-mode');
+          }
+        } catch(e) {}
+      })();
+    </script>
   </head>
   <body>
     <!-- Main mounting point for React application -->
     <div id="root"></div>
+    <!-- Global reCAPTCHA container for Firebase Phone Authentication -->
+    <div id="recaptcha-container"></div>
 
     <!-- Bootstrap 5 Bundle JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -80,17 +96,38 @@
 
     <!-- Service Worker & PWA Registration -->
     <script>
-      let deferredPrompt;
-      let installModal;
+      let deferredPrompt = null;
+      let installModal = null;
+      // Track if user is signed in (set by React via window.galaxySetUserSignedIn)
+      window._galaxyUserSignedIn = false;
 
       window.addEventListener('beforeinstallprompt', (e) => {
-        // Prevent Chrome 67 and earlier from automatically showing the prompt
+        // Prevent the browser from automatically showing the prompt
         e.preventDefault();
-        // Stash the event so it can be triggered later.
+        // Stash the event so it can be triggered after sign-in
         deferredPrompt = e;
-        // Show the custom modal prompt
-        showPromptModal();
+        window._galaxyDeferredPrompt = e;
+        // Only show install modal if user is already signed in
+        if (window._galaxyUserSignedIn) {
+          showPromptModal();
+        }
       });
+
+      // Called by React (App.jsx) when user signs in
+      window.galaxyOnUserSignedIn = function() {
+        window._galaxyUserSignedIn = true;
+        if (deferredPrompt) {
+          showPromptModal();
+        }
+      };
+
+      // Called by React (App.jsx) when user signs out
+      window.galaxyOnUserSignedOut = function() {
+        window._galaxyUserSignedIn = false;
+        if (installModal) {
+          try { installModal.hide(); } catch(e) {}
+        }
+      };
 
       function showPromptModal() {
         const installModalEl = document.getElementById('pwaInstallModal');
@@ -116,6 +153,7 @@
           console.log(`User response to the install prompt: ${outcome}`);
           // Reset the prompt variable
           deferredPrompt = null;
+          window._galaxyDeferredPrompt = null;
           // Hide the modal
           if (installModal) {
             installModal.hide();
@@ -124,27 +162,52 @@
       }
 
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then(reg => {
-              console.log('ServiceWorker registered:', reg.scope);
-              reg.update();
-              setInterval(() => {
-                reg.update();
-              }, 1000 * 60 * 5); // Check every 5 minutes
-            })
-            .catch(err => {
-              console.error('ServiceWorker registration failed:', err);
-            });
-        });
+        const isLocalhost = Boolean(
+          window.location.hostname === 'localhost' ||
+          window.location.hostname === '[::1]' ||
+          window.location.hostname === '127.0.0.1' ||
+          window.location.hostname.endsWith('.local')
+        );
 
-        let refreshing = false;
-        navigator.serviceWorker.addEventListener('controllerchange', () => {
-          if (!refreshing) {
-            refreshing = true;
-            window.location.reload();
+        if (isLocalhost) {
+          // In local development, unregister any active service worker to avoid stale cache collisions with Vite dev server
+          navigator.serviceWorker.getRegistrations().then(registrations => {
+            for (const registration of registrations) {
+              registration.unregister();
+              console.log('Unregistered development ServiceWorker:', registration.scope);
+            }
+          });
+          if ('caches' in window) {
+            caches.keys().then(keys => {
+              for (const key of keys) {
+                caches.delete(key);
+              }
+            });
           }
-        });
+        } else {
+          // Register in production / deployed domains
+          window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js')
+              .then(reg => {
+                console.log('ServiceWorker registered:', reg.scope);
+                reg.update();
+                setInterval(() => {
+                  reg.update();
+                }, 1000 * 60 * 5); // Check every 5 minutes
+              })
+              .catch(err => {
+                console.error('ServiceWorker registration failed:', err);
+              });
+          });
+
+          let refreshing = false;
+          navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (!refreshing) {
+              refreshing = true;
+              window.location.reload();
+            }
+          });
+        }
       }
     </script>
   </body>

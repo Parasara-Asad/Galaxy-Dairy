@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { convertToCSV, exportFile } from '../utils/exportUtils';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { notoGujaratiB64 } from '../assets/notoGujaratiFont';
+import { notoSansB64 } from '../assets/notoSansFont';
 
 // Sub-component to render the Trend Chart
 function ProfitChart({ records, incomeRecords, expenseRecords, darkMode }) {
@@ -48,9 +51,10 @@ function ProfitChart({ records, incomeRecords, expenseRecords, darkMode }) {
       dailyProfitData.push(dailyProfit);
     });
 
-    const textColor = darkMode ? "#9CA3AF" : "#6b7280";
-    const gridColor = darkMode ? "#334155" : "#e5e7eb";
-    const legendColor = darkMode ? "#E5E7EB" : "#1f2937";
+    const isDarkOrGlass = darkMode || (typeof document !== 'undefined' && ['dark', 'glassmorphism'].includes(document.body.getAttribute('data-theme')));
+    const textColor = isDarkOrGlass ? "#9CA3AF" : "#6b7280";
+    const gridColor = isDarkOrGlass ? "rgba(255, 255, 255, 0.12)" : "#e5e7eb";
+    const legendColor = isDarkOrGlass ? "#E5E7EB" : "#1f2937";
 
     if (chartInstanceRef.current) {
       chartInstanceRef.current.destroy();
@@ -262,9 +266,6 @@ function ProfitLossView({
   }, []);
 
   const totalMilkRevenue = records.reduce((sum, r) => sum + r.totalAmount, 0);
-  const milkPurchaseCost = expenseRecords
-    .filter(r => r.category === "Milk Purchase")
-    .reduce((sum, r) => sum + r.amount, 0);
   const otherIncome = incomeRecords.reduce((sum, r) => sum + r.amount, 0);
   const totalExpenses = expenseRecords.reduce((sum, r) => sum + r.amount, 0);
   const netProfit = totalMilkRevenue + otherIncome - totalExpenses;
@@ -389,42 +390,219 @@ function ProfitLossView({
     setFilterToDate('');
   };
 
-  const exportLedgerToExcel = async () => {
-    if (filteredTransactions.length === 0) {
-      triggerToast("No ledger records available to export.", "warning");
-      return;
-    }
+  const exportLedgerToPDF = () => {
+    triggerToast('Generating PDF…', 'primary');
 
-    const headers = [
-      "Date",
-      "Type",
-      "Category",
-      "Description",
-      "Amount (INR)"
-    ];
+    // ─────────────────────────────────────────────────────────────────────
+    // FONT STRATEGY
+    // GUJARATI_FONT  → NotoSansGujarati  (covers Gujarati U+0A80–0AFF + Latin)
+    // SANS_FONT      → NotoSans          (covers Devanagari/Hindi U+0900–097F,
+    //                                     Bengali, Latin, ₹ and most others)
+    //
+    // Per-cell detection:  if text contains Gujarati codepoints → GUJARATI_FONT
+    //                      else                                  → SANS_FONT
+    // ─────────────────────────────────────────────────────────────────────
+    const GUJARATI_FONT = 'NotoGujarati';
+    const SANS_FONT     = 'NotoSans';
 
-    const rows = filteredTransactions.map((tx) => [
-      formatDate(tx.date),
-      tx.type === 'income' ? 'Income' : 'Expense',
-      tx.category,
-      tx.description,
-      tx.amount
-    ]);
+    const GUJARATI_RE = /[\u0A80-\u0AFF]/;   // Gujarati Unicode block
+    const fontFor = (text) =>
+      GUJARATI_RE.test(String(text ?? '')) ? GUJARATI_FONT : SANS_FONT;
 
-    const csvContent = convertToCSV(headers, rows);
-    const filename = `Financial_Ledger_Export_${Date.now()}.csv`;
-
-    triggerToast("Generating Excel file...", "primary");
-    const result = await exportFile(filename, csvContent);
-    if (result.success) {
-      if (result.native) {
-        triggerToast("Saved to storage and opened share sheet!", "success");
-      } else {
-        triggerToast("Ledger CSV downloaded successfully!", "success");
+    // ── Safe date formatter (fixes "Invalid Date") ─────────────────────
+    const safeDate = (raw) => {
+      if (!raw) return '—';
+      const s = String(raw).trim();
+      // Already a display string (contains letters that aren't from ISO)
+      // Try strict ISO first: YYYY-MM-DD
+      const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (iso) {
+        const d = new Date(`${iso[1]}-${iso[2]}-${iso[3]}T00:00:00`);
+        if (!isNaN(d)) return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
       }
-    } else {
-      triggerToast("Failed to download Excel file.", "danger");
-    }
+      // Numeric timestamp
+      if (/^\d{10,}$/.test(s)) {
+        const d = new Date(Number(s));
+        if (!isNaN(d)) return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+      }
+      // Generic parse
+      const d = new Date(s);
+      if (!isNaN(d)) return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+      // Already formatted — return as-is
+      return s;
+    };
+
+    // ── Collect data (reuse existing app state — no dummy data) ──────────
+    const incomeFromMilk = records.map(r => ({
+      date: safeDate(r.date),
+      category: 'Milk Revenue',
+      description: r.description || `${r.farmerName || 'Farmer'} – ${r.quantity ?? ''}L`,
+      amount: r.totalAmount,
+    }));
+    const incomeOther = incomeRecords.map(r => ({
+      date: safeDate(r.date),
+      category: r.category,
+      description: r.description,
+      amount: r.amount,
+    }));
+    const allIncome = [...incomeFromMilk, ...incomeOther]
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    const allOutcome = expenseRecords.map(r => ({
+      date: safeDate(r.date),
+      category: r.category,
+      description: r.description,
+      amount: r.amount,
+    })).sort((a, b) => a.date.localeCompare(b.date));
+
+    // Reuse existing component totals — no re-calculation
+    const totalIncomeAmt  = totalMilkRevenue + otherIncome;
+    const totalOutcomeAmt = totalExpenses;
+
+    const fmt = (n) =>
+      `\u20B9${Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+
+    // ── PDF document ─────────────────────────────────────────────────────
+    const doc  = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pageW = doc.internal.pageSize.getWidth();   // 210
+    const pageH = doc.internal.pageSize.getHeight();  // 297
+    const margin = 14;
+    const now = new Date().toLocaleDateString('en-IN',
+      { day: '2-digit', month: 'short', year: 'numeric' });
+
+    // Register both Unicode fonts
+    doc.addFileToVFS('NotoSansGujarati-Regular.ttf', notoGujaratiB64);
+    doc.addFont('NotoSansGujarati-Regular.ttf', GUJARATI_FONT, 'normal');
+    doc.addFileToVFS('NotoSans-Regular.ttf', notoSansB64);
+    doc.addFont('NotoSans-Regular.ttf', SANS_FONT, 'normal');
+
+    // ── Helpers ───────────────────────────────────────────────────────────
+    const drawHeader = (title, color) => {
+      doc.setFillColor(...color);
+      doc.rect(0, 0, pageW, 28, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(16);
+      doc.setFont(SANS_FONT, 'normal');
+      doc.text('Galaxy Dairy', margin, 11);
+      doc.setFontSize(10);
+      doc.text(title, margin, 20);
+      doc.setFontSize(8);
+      doc.text(`Generated: ${now}`, pageW - margin, 20, { align: 'right' });
+      doc.setTextColor(30, 30, 30);
+    };
+
+    const drawTotalBar = (label, value, color, y) => {
+      doc.setFillColor(...color);
+      doc.roundedRect(margin, y, pageW - margin * 2, 11, 2, 2, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(10);
+      doc.setFont(SANS_FONT, 'normal');
+      doc.text(label, margin + 4, y + 7.5);
+      doc.text(value, pageW - margin - 2, y + 7.5, { align: 'right' });
+    };
+
+    const addPageNumbers = () => {
+      const total = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= total; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(150);
+        doc.setFont(SANS_FONT, 'normal');
+        doc.text(`Page ${i} of ${total}`, pageW / 2, pageH - 5, { align: 'center' });
+      }
+    };
+
+    // ── Table config ──────────────────────────────────────────────────────
+    // Usable width = 210 − 14 − 14 = 182mm
+    // Cols: Date(24) + Category(38) + Description(88) + Amount(32) = 182 ✓
+    const columns = ['Date', 'Category', 'Description', 'Amount'];
+    const baseStyles = {
+      fontSize: 9,
+      cellPadding: { top: 3, bottom: 3, left: 3, right: 3 },
+      overflow: 'linebreak',
+      font: SANS_FONT,          // default; overridden per-cell below
+      lineColor: [210, 210, 210],
+      lineWidth: 0.2,
+      minCellHeight: 8,
+    };
+    const colDefs = {
+      0: { cellWidth: 24, valign: 'top' },
+      1: { cellWidth: 38, valign: 'top' },
+      2: { cellWidth: 88, valign: 'top', overflow: 'linebreak' },
+      3: { cellWidth: 32, halign: 'right', valign: 'top' },
+    };
+
+    // Per-cell font switching: choose GUJARATI_FONT when Gujarati chars found
+    const willDrawCell = (data) => {
+      if (data.section === 'head') return;
+      const text = String(data.cell.raw ?? '');
+      const font = fontFor(text);
+      data.cell.styles.font = font;
+    };
+
+    // ── PAGE 1+ : INCOME ─────────────────────────────────────────────────
+    drawHeader('Income Report', [20, 83, 45]);
+
+    const incomeRows = allIncome.length > 0
+      ? allIncome.map(r => [r.date, r.category, r.description, fmt(r.amount)])
+      : [['—', '—', 'No income records available.', '—']];
+
+    autoTable(doc, {
+      startY: 32,
+      tableWidth: 'fixed',
+      head: [columns],
+      body: incomeRows,
+      margin: { left: margin, right: margin },
+      styles: baseStyles,
+      headStyles: {
+        fillColor: [20, 83, 45], textColor: 255,
+        fontStyle: 'bold', font: SANS_FONT, fontSize: 9,
+      },
+      alternateRowStyles: { fillColor: [240, 253, 244] },
+      columnStyles: colDefs,
+      willDrawCell,
+      didDrawPage: (data) => {
+        if (data.pageNumber > 1) drawHeader('Income Report (cont.)', [20, 83, 45]);
+      },
+    });
+
+    drawTotalBar('Income Total:', fmt(totalIncomeAmt), [20, 83, 45],
+      doc.lastAutoTable.finalY + 5);
+
+    // ── PAGE 2+ : OUTCOME ────────────────────────────────────────────────
+    doc.addPage();
+    drawHeader('Outcome Report', [153, 27, 27]);
+
+    const outcomeRows = allOutcome.length > 0
+      ? allOutcome.map(r => [r.date, r.category, r.description, fmt(r.amount)])
+      : [['—', '—', 'No outcome records available.', '—']];
+
+    autoTable(doc, {
+      startY: 32,
+      tableWidth: 'fixed',
+      head: [columns],
+      body: outcomeRows,
+      margin: { left: margin, right: margin },
+      styles: baseStyles,
+      headStyles: {
+        fillColor: [153, 27, 27], textColor: 255,
+        fontStyle: 'bold', font: SANS_FONT, fontSize: 9,
+      },
+      alternateRowStyles: { fillColor: [255, 241, 242] },
+      columnStyles: colDefs,
+      willDrawCell,
+      didDrawPage: (data) => {
+        if (data.pageNumber > 1) drawHeader('Outcome Report (cont.)', [153, 27, 27]);
+      },
+    });
+
+    drawTotalBar('Outcome Total:', fmt(totalOutcomeAmt), [153, 27, 27],
+      doc.lastAutoTable.finalY + 5);
+
+    // ── Finish ────────────────────────────────────────────────────────────
+    addPageNumbers();
+    doc.save('Galaxy-Dairy-Financial-Report.pdf');
+    triggerToast('PDF downloaded successfully!', 'success');
   };
 
   const formatDate = (dateStr) => {
@@ -690,19 +868,18 @@ function ProfitLossView({
       )}
 
       {/* 2. Sub-Screen Mode (Financial Transaction Ledger & Filters) */}
-      {(onlyLedger || !onlyLedger) && (
-        <div className={onlyLedger ? "" : "mt-4"}>
+      <div className={onlyLedger ? "" : "mt-4"}>
           <div className="d-flex justify-content-between align-items-center mb-3 text-dark">
             <div>
               <h5 className="fw-bold mb-1">Financial Ledger logs</h5>
               <p className="text-muted small mb-0">Search and review cooperative income/expense items.</p>
             </div>
             <button 
-              className="btn btn-sm btn-success rounded-pill px-3 d-flex align-items-center gap-1"
-              onClick={exportLedgerToExcel}
+              className="btn btn-sm btn-danger rounded-pill px-3 d-flex align-items-center gap-1"
+              onClick={exportLedgerToPDF}
             >
-              <i className="bi bi-file-earmark-excel-fill"></i>
-              <span>Excel</span>
+              <i className="bi bi-file-earmark-pdf-fill"></i>
+              <span>Download PDF</span>
             </button>
           </div>
 
@@ -866,7 +1043,6 @@ function ProfitLossView({
             )}
           </div>
         </div>
-      )}
     </div>
   );
 }

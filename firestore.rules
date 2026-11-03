@@ -1,0 +1,28 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // User profile documents: Only authenticated owner can read and write their own document
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && request.auth.uid == userId;
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Username directory for uniqueness checking and login resolution:
+    // Anyone can read to check existence or resolve username to email for login
+    // Only authenticated user can create their unique username record
+    match /usernames/{username} {
+      allow read: if true;
+      allow create: if request.auth != null && !exists(/databases/$(database)/documents/usernames/$(username));
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.uid;
+    }
+
+    // User-specific milk collection records (when synced to Firestore in future):
+    match /records/{recordId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+  }
+}
